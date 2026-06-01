@@ -1,0 +1,79 @@
+import React from 'react';
+import { ExternalLink, Trash2, Pin, ArrowUpRight, Globe } from 'lucide-react';
+
+const BookmarkCard = ({ bookmark, onDelete, onPin, onClick, isSelected }) => {
+  return (
+    <div 
+      onClick={onClick}
+      className={`minimal-card group p-4 flex flex-col h-full bg-[var(--color-card)] border-[var(--color-border)] cursor-pointer transition-all duration-300 ${
+        isSelected ? 'border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)]' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-border flex items-center justify-center p-1.5 group-hover:border-accent-blue/30 transition-all duration-300">
+          <img 
+            src={`https://www.google.com/s2/favicons?sz=64&domain=${bookmark.domain || (bookmark.url ? new URL(bookmark.url).hostname : '')}`} 
+            alt="" 
+            className="w-full h-full object-contain filter grayscale group-hover:grayscale-0 transition-all duration-300"
+            onError={(e) => {
+                e.target.style.display = 'none';
+                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          <div style={{display: 'none'}} className="items-center justify-center text-accent-blue/50"><Globe size={14} /></div>
+        </div>
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPin(bookmark.id);
+          }}
+          className={`p-1.5 rounded-lg transition-all duration-200 cursor-pointer ${
+            bookmark.pinned 
+              ? 'text-accent-blue hover:text-slate-400 bg-white/[0.03] border border-accent-blue/20 shadow-md shadow-accent-blue/5' 
+              : 'text-slate-700 hover:text-accent-blue hover:bg-white/[0.03] opacity-0 group-hover:opacity-100'
+          }`}
+          title={bookmark.pinned ? "Unpin Bookmark" : "Pin Bookmark"}
+        >
+          <Pin size={12} fill={bookmark.pinned ? "currentColor" : "none"} className={`transition-transform duration-300 ${bookmark.pinned ? "rotate-45" : "group-hover:scale-110"}`} />
+        </button>
+      </div>
+
+      <div className="space-y-1 mb-3">
+        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
+          {bookmark.category || 'Uncategorized'}
+        </span>
+        <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent-blue transition-colors">
+          {bookmark.title}
+        </h3>
+      </div>
+
+      <p className="text-slate-500 text-xs leading-relaxed line-clamp-2 flex-1 mb-4">
+        {bookmark.description || "Synthesizing resource intelligence for later retrieval."}
+      </p>
+
+      <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDelete(bookmark.id); }}
+          className="p-1.5 text-slate-700 hover:text-red-500 rounded-md transition-colors"
+          title="Delete"
+        >
+          <Trash2 size={14} />
+        </button>
+        
+        <a 
+          href={bookmark.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="text-xxs font-bold text-slate-500 uppercase tracking-widest hover:text-foreground flex items-center gap-1 transition-all"
+        >
+          Open
+          <ArrowUpRight size={10} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </a>
+      </div>
+    </div>
+  );
+};
+
+export default BookmarkCard;

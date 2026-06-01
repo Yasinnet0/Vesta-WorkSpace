@@ -1,0 +1,90 @@
+{
+  "name": "vesta",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Vesta",
+  "author": "Vesta Dev",
+  "type": "module",
+  "main": "electron.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:win": "npm run build && electron-builder --win",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.vesta",
+    "productName": "Vesta",
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "server.js",
+      "data/**/*",
+      "public/logo.ico"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "allowElevation": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vesta",
+      "installerIcon": "public/logo.ico",
+      "uninstallerIcon": "public/logo.ico",
+      "installerHeaderIcon": "public/logo.ico",
+      "runAfterFinish": true,
+      "uninstallDisplayName": "Vesta Premium Workspace",
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "dependencies": {
+    "axios": "^1.16.1",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.6",
+    "d3-force": "^3.0.0",
+    "express": "^5.2.1",
+    "framer-motion": "^12.39.0",
+    "lucide-react": "^0.475.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-force-graph-2d": "^1.29.1",
+    "react-router-dom": "^7.15.1",
+    "tailwind-merge": "^3.6.0",
+    "uuid": "^14.0.0",
+    "mermaid": "^11.4.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0",
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.10"
+  }
+}
