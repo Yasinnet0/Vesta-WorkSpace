@@ -3,15 +3,15 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # Triggers the workflow whenever you push a tag like v1.0.0
+      - 'v*' # Triggers on any tag like v1.0.0
+  workflow_dispatch: # Allows you to run it manually from the Actions tab
 
 permissions:
-  contents: write # CRITICAL: Allows uploading package files to GitHub Releases
+  contents: write # REQUIRED: Allows the bot to create releases and upload files
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Caches npm packages for faster runs
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm ci
@@ -32,3 +32,4 @@ jobs:
         run: npx electron-builder --win --publish always
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # If you use code signing in the future, you add your certificates here
