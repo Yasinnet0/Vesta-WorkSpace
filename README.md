@@ -1,4 +1,4 @@
-# <img src="https://github.com/user-attachments/assets/df2dc306-66c8-4106-8790-110ae1696cba" width="40" height="40" align="center" style="margin-right: 10px;" /> Vesta Workspace
+# <img src="public/logo.ico" width="40" height="40" align="center" style="margin-right: 10px;" /> Vesta Workspace
 
 > **Vesta** is a high-fidelity visual workspace and workflow designer that merges graphical stages with integrated personal notes, tasks, ideas, and bookmarks into a unified, desktop-class interactive canvas. Built as an Electron desktop suite using React and Tailwind CSS, it offers a glassmorphic productivity environment.
 
@@ -6,7 +6,7 @@
 
 ## 💎 Primary Feature Showcases
 
-![Vesta Workspace Showcase](src/assets/hero.png)
+![Vesta Workspace Showcase](https://github.com/user-attachments/assets/df2dc306-66c8-4106-8790-110ae1696cba)
 
 ### 🎨 Visual Workflow Designer
 * **Dynamic Canvas Positioning**: Nodes are placed on an infinite canvas with zero positional drag latency, updating at a smooth 60fps.
