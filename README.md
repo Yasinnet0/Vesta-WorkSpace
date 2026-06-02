@@ -110,4 +110,4 @@ npm run electron:win
 
 ## 🛡️ License
 
-Copyright © 2026 Vesta Dev. All rights reserved. Distributed under the **MIT License**.
+Copyright © 2026 Stride Dev. All rights reserved. Distributed under the **MIT License**.
