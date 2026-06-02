@@ -6,20 +6,7 @@
 
 ## 💎 Primary Feature Showcases
 
-```mermaid
-graph LR
-    %% Custom Minimalist Premium Styles
-    classDef database fill:#0f172a,stroke:#3b82f6,stroke-width:1.5px,color:#93c5fd,rx:8px,ry:8px;
-    classDef canvas fill:#1b1d30,stroke:#a855f7,stroke-width:1.5px,color:#e9d5ff,rx:8px,ry:8px;
-    classDef export fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#a7f3d0,rx:8px,ry:8px;
-
-    DB["📋 Workspace Databases<br>📝 Notes • ✅ Tasks • 🔖 Bookmarks • 💡 Ideas"]:::database
-    Canvas["🎨 Infinite Visual Canvas<br>🔍 Stage Cards • ⚡ Sub-Nodes • 🔗 Badge Links"]:::canvas
-    Release["🚀 Production Releases<br>📐 Vector SVGs • 🖼️ HD Images • 🖥️ Desktop App"]:::export
-
-    DB ===>|Seamless Dynamic Linking| Canvas
-    Canvas ===>|Export & OS Package| Release
-```
+![Vesta Workspace Showcase](src/assets/hero.png)
 
 ### 🎨 Visual Workflow Designer
 * **Dynamic Canvas Positioning**: Nodes are placed on an infinite canvas with zero positional drag latency, updating at a smooth 60fps.
@@ -110,4 +97,4 @@ npm run electron:win
 
 ## 🛡️ License
 
-Copyright © 2026 Vesta Dev. All rights reserved. Distributed under the **MIT License**.
+Copyright © 2026 Stride Dev. All rights reserved. Distributed under the **MIT License**.
