@@ -22,6 +22,30 @@ const DATA_DIR = process.env.USER_DATA_PATH
 async function ensureDataDirExists() {
     try {
         await fs.mkdir(DATA_DIR, { recursive: true });
+        
+        // Copy default database templates from __dirname/data if target files do not exist
+        const templateDir = path.join(__dirname, 'data');
+        if (path.resolve(DATA_DIR) !== path.resolve(templateDir)) {
+            try {
+                const files = await fs.readdir(templateDir);
+                for (const file of files) {
+                    if (file.endsWith('.json')) {
+                        const destPath = path.join(DATA_DIR, file);
+                        try {
+                            await fs.access(destPath);
+                            // File exists, keep it
+                        } catch {
+                            // File does not exist, copy from template
+                            const srcPath = path.join(templateDir, file);
+                            await fs.copyFile(srcPath, destPath);
+                            console.log(`Initialized database: ${file} copied to ${DATA_DIR}`);
+                        }
+                    }
+                }
+            } catch (copyErr) {
+                console.error("Failed to copy default template database files:", copyErr);
+            }
+        }
     } catch (err) {
         // Already exists or permission/other error (fallback gracefully)
     }

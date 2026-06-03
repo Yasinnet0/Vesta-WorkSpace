@@ -63,7 +63,7 @@ const LinkEditor = ({ link, nodes, onClose, onNodeSelect, onDataChanged }) => {
         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{label} Node</span>
         <div 
           onClick={() => onNodeSelect(node)}
-          className="group relative p-4 rounded-xl border border-white/5 bg-[#0a0a0d] hover:bg-[#111116] hover:border-white/10 transition-all cursor-pointer shadow-lg active:scale-[0.98] overflow-hidden"
+          className="group relative p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)]/40 hover:bg-[var(--color-card)] transition-all cursor-pointer shadow-lg active:scale-[0.98] overflow-hidden"
         >
           <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
             <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" />
@@ -99,14 +99,14 @@ const LinkEditor = ({ link, nodes, onClose, onNodeSelect, onDataChanged }) => {
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-      className="absolute top-0 right-0 z-50 h-full w-[400px] border-l border-white/10 bg-[#07070a]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
+      className="absolute top-0 right-0 z-50 h-full w-[400px] border-l border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
     >
       {/* Upper Content */}
       <div className="space-y-6">
         {/* Title Block */}
         <div className="flex items-start justify-between border-b border-white/5 pb-4">
           <div className="flex flex-col gap-1.5 w-4/5">
-            <span className="px-2 py-0.5 self-start text-[9px] font-black uppercase tracking-widest rounded-md border border-blue-500/20 bg-blue-500/10 text-blue-400">
+            <span className="px-2 py-0.5 self-start text-[9px] font-black uppercase tracking-widest rounded-md border border-[var(--color-accent-blue)]/20 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)]">
               Relationship
             </span>
             <h3 className="text-md font-bold text-white tracking-tight flex items-center gap-2">
@@ -130,7 +130,7 @@ const LinkEditor = ({ link, nodes, onClose, onNodeSelect, onDataChanged }) => {
         )}
 
         {/* Connection Type Indicator Card */}
-        <div className="p-4 rounded-xl border border-white/5 bg-[#09090c] flex items-center justify-between shadow-md">
+        <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)]/50 flex items-center justify-between shadow-md">
           <div className="space-y-0.5">
             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Connection Type</span>
             <div className="text-xs font-bold text-white">{linkCategory}</div>
@@ -145,8 +145,8 @@ const LinkEditor = ({ link, nodes, onClose, onNodeSelect, onDataChanged }) => {
 
         {/* Path Flow Indicator */}
         <div className="flex justify-center py-1">
-          <div className="w-8 h-8 rounded-full border border-white/5 bg-[#09090c] flex items-center justify-center text-slate-400 shadow-md">
-            <ArrowRight className="w-4 h-4 animate-pulse text-blue-400" />
+          <div className="w-8 h-8 rounded-full border border-[var(--color-border)] bg-[var(--color-background)]/50 flex items-center justify-center text-slate-400 shadow-md">
+            <ArrowRight className="w-4 h-4 animate-pulse text-[var(--color-accent-blue-bright)]" />
           </div>
         </div>
 

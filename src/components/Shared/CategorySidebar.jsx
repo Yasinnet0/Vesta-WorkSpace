@@ -203,24 +203,26 @@ const CategorySidebar = ({
         </div>
         
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-            isActive ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.04] text-slate-500 group-hover/item:text-slate-400'
-          }`}>
-            {count}
-          </span>
-
           {/* Quick options trigger */}
-          {cat !== 'General' && cat !== 'Main' && (
+          {cat !== 'General' && cat !== 'Main' ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setActiveMenuCat(activeMenuCat === cat ? null : cat);
               }}
-              className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/item:opacity-100 transition-opacity"
+              className="p-0.5 rounded hover:bg-white/10 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer shrink-0"
             >
               <MoreVertical size={11} className="text-slate-500 hover:text-slate-300" />
             </button>
+          ) : (
+            <div className="w-4 shrink-0" />
           )}
+
+          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+            isActive ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.04] text-slate-500 group-hover/item:text-slate-400'
+          }`}>
+            {count}
+          </span>
         </div>
 
         {/* Dropdown Menu for Category Settings */}
@@ -275,7 +277,7 @@ const CategorySidebar = ({
   };
 
   return (
-    <aside className="w-56 border border-[var(--color-border)] bg-[var(--color-card)] shrink-0 h-[calc(100vh-8rem)] sticky top-6 flex flex-col p-4 space-y-5 overflow-y-auto no-scrollbar rounded-2xl shadow-xl">
+    <aside className="w-56 border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shrink-0 h-[calc(100vh-8rem)] sticky top-6 flex flex-col p-4 space-y-5 overflow-y-auto no-scrollbar rounded-2xl shadow-xl">
       
       {/* Search & Management Header */}
       <div className="space-y-2 shrink-0">
@@ -301,33 +303,37 @@ const CategorySidebar = ({
 
         {/* Inline Folder Addition Form */}
         {showAddFolder && (
-          <form onSubmit={handleCreateFolder} className="flex items-center gap-1.5 p-1.5 bg-white/[0.02] border border-border/50 rounded-lg">
+          <form onSubmit={handleCreateFolder} className="flex items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-lg w-full">
             <input 
               type="text" 
               placeholder="FOLDER NAME..." 
               autoFocus
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
-              className="flex-1 bg-transparent border-none outline-none text-[9px] font-black text-slate-200 placeholder:text-slate-600 uppercase"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowAddFolder(false);
+              }}
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-[9px] font-black text-slate-200 placeholder:text-slate-655 uppercase focus:ring-0 focus:outline-none"
             />
-            <button type="submit" className="px-2 py-0.5 rounded bg-blue-600 text-white text-[8px] font-black uppercase">Create</button>
-            <button type="button" onClick={() => setShowAddFolder(false)} className="text-slate-500 hover:text-white"><X size={10} /></button>
+            <button type="button" onClick={() => setShowAddFolder(false)} className="text-slate-500 hover:text-white cursor-pointer"><X size={10} /></button>
           </form>
         )}
 
         {/* Inline Category Addition Form */}
         {showAddCategory && (
-          <form onSubmit={handleCreateCategory} className="flex items-center gap-1.5 p-1.5 bg-white/[0.02] border border-border/50 rounded-lg">
+          <form onSubmit={handleCreateCategory} className="flex items-center gap-1.5 p-1.5 bg-white/[0.02] border border-white/5 rounded-lg w-full">
             <input 
               type="text" 
               placeholder="NEW CATEGORY..." 
               autoFocus
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
-              className="flex-1 bg-transparent border-none outline-none text-[9px] font-black text-slate-200 placeholder:text-slate-600 uppercase"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowAddCategory(false);
+              }}
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-[9px] font-black text-slate-200 placeholder:text-slate-655 uppercase focus:ring-0 focus:outline-none"
             />
-            <button type="submit" className="px-2 py-0.5 rounded bg-blue-600 text-white text-[8px] font-black uppercase">Add</button>
-            <button type="button" onClick={() => setShowAddCategory(false)} className="text-slate-500 hover:text-white"><X size={10} /></button>
+            <button type="button" onClick={() => setShowAddCategory(false)} className="text-slate-500 hover:text-white cursor-pointer"><X size={10} /></button>
           </form>
         )}
 

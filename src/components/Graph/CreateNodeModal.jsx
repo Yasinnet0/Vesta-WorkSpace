@@ -126,7 +126,7 @@ const CreateNodeModal = ({ onClose, onSuccess, initialCoordinates }) => {
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="w-full max-w-lg bg-[#0c0c0f]/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative"
+        className="w-full max-w-lg bg-[var(--color-card)]/95 border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -229,7 +229,7 @@ const CreateNodeModal = ({ onClose, onSuccess, initialCoordinates }) => {
               </div>
 
               {/* Scrollable Entity List */}
-              <div className="max-h-48 overflow-y-auto border border-white/5 bg-[#08080a] rounded-xl no-scrollbar divide-y divide-white/5">
+              <div className="max-h-48 overflow-y-auto border border-white/5 bg-[var(--color-background)] rounded-xl no-scrollbar divide-y divide-white/5">
                 {loading ? (
                   <div className="p-4 text-center text-xs text-slate-500">Loading elements...</div>
                 ) : filteredEntities.length === 0 ? (

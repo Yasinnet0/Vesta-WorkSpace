@@ -12,7 +12,7 @@ const Notes = () => {
       addItem={addNote}
       updateItem={updateNote}
       categoryKey="notes"
-      accentColor="cyan"
+      accentColor="blue"
       label="Documentation"
     />
   );

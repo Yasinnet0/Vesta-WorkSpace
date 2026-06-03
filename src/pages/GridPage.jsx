@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, LayoutGrid, List, Sparkles, Tag, X, Clock, Trash2, Edit3, FileText, Folder, FolderOpen } from 'lucide-react';
 import NoteCard from '../components/Shared/NoteCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,7 +116,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
     setLoading(false);
   };
 
-  const handleUndo = async () => {
+  const handleUndo = useCallback(async () => {
     if (undoStack.length === 0) return;
     const lastAction = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
@@ -126,7 +127,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
     } catch (err) {
       console.error("Failed to undo deletion", err);
     }
-  };
+  }, [undoStack]);
 
   useEffect(() => {
     if (undoStack.length > 0) {
@@ -142,20 +143,43 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
       }, 5000);
       return () => clearTimeout(timer);
     }
+  }, [undoStack, label]);
+
+  const undoStackRef = useRef(undoStack);
+  const handleUndoRef = useRef(handleUndo);
+
+  useEffect(() => {
+    undoStackRef.current = undoStack;
   }, [undoStack]);
 
   useEffect(() => {
+    handleUndoRef.current = handleUndo;
+  }, [handleUndo]);
+
+  useEffect(() => {
     const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isEditingInput = activeEl && (
+        (activeEl.tagName === 'INPUT' && activeEl.value !== '') || 
+        (activeEl.tagName === 'TEXTAREA' && activeEl.value !== '') || 
+        activeEl.isContentEditable
+      );
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (undoStack.length > 0) {
+        if (!isEditingInput && undoStackRef.current.length > 0) {
           e.preventDefault();
-          handleUndo();
+          handleUndoRef.current();
+        }
+      } else if (e.key === 'Escape') {
+        setSelectedItemId(null);
+        if (document.activeElement) {
+          document.activeElement.blur();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack]);
+  }, []);
 
   // Keyboard handling for custom category confirmation modal
   useEffect(() => {
@@ -182,16 +206,18 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
     e.preventDefault();
     if (!newContent.trim()) return;
     try {
+      const fallbackCat = (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory)) ? 'General' : activeCategory;
+      const finalCategory = newCategory || fallbackCat;
       const res = await addItem({ 
         content: newContent, 
-        category: newCategory || 'General',
+        category: finalCategory,
         created: new Date().toISOString()
       });
       setItems([res.data, ...items]);
       setNewContent('');
       setNewCategory('');
-      if (newCategory && !categories.includes(newCategory)) {
-          setCategories([...categories, newCategory]);
+      if (finalCategory && !categories.includes(finalCategory)) {
+          setCategories([...categories, finalCategory]);
       }
     } catch (err) {
       console.error("Failed to add item", err);
@@ -335,6 +361,21 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
     return itemCat.toLowerCase() === activeCategory.toLowerCase();
   });
 
+  const renderToastMessage = (message) => {
+    if (!message) return null;
+    const parts = message.split('Ctrl+Z');
+    if (parts.length === 2) {
+      return (
+        <>
+          {parts[0]}
+          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
+          {parts[1]}
+        </>
+      );
+    }
+    return message;
+  };
+
   return (
     <div className="w-full pb-20 premium-page-entrance">
       <div className="flex items-start w-full gap-0">
@@ -364,7 +405,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
         </AnimatePresence>
 
         {/* Center Column: Main Grid Content Area */}
-        <div className="flex-1 min-w-0 max-w-[1300px] mx-auto w-full space-y-6 transition-all duration-300 pr-4">
+        <div className="flex-1 min-w-0 max-w-full mx-auto w-full px-6 space-y-6 transition-all duration-300">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
@@ -377,15 +418,15 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
                   }}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer select-none mr-2 ${
                     isSidebarCollapsed 
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] animate-pulse' 
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
                       : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-white'
                   }`}
-                  title={isSidebarCollapsed ? "Expand Categories" : "Collapse Categories"}
+                  title={isSidebarCollapsed ? "Expand Folders" : "Collapse Folders"}
                 >
                   {isSidebarCollapsed ? (
                     <>
                       <Folder className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Categories</span>
+                      <span>Folders</span>
                     </>
                   ) : (
                     <>
@@ -432,7 +473,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
             </div>
           </div>
 
-          <form onSubmit={handleAddItem} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-white/[0.02] hover:bg-white/[0.03] border border-white/10 rounded-xl shadow-2xl transition-all w-full h-12">
+          <form onSubmit={handleAddItem} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-blue-500/40 rounded-xl shadow-2xl transition-all w-full h-12">
             <Plus size={16} className="text-blue-500 shrink-0" />
             <input
               type="text"
@@ -443,12 +484,12 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
             />
             
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 w-36 shrink-0">
+              <div className="flex items-center gap-1.5 w-36 shrink-0 text-slate-200">
                 <CategoryCombobox
-                  value={newCategory}
+                  value={newCategory || (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory) ? '' : activeCategory)}
                   onChange={(val) => setNewCategory(val)}
                   suggestions={categories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                  placeholder="Category..."
+                  placeholder="Folder..."
                   accentColor={accentColor}
                   variant="minimal"
                 />
@@ -459,7 +500,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
 
           <div 
             key={activeCategory}
-            className={`grid gap-4 fade-in ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}
+            className={`grid gap-4 fade-in ${viewMode === 'grid' ? 'grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5' : 'grid-cols-1'}`}
           >
             {filteredItems.map((item) => (
               <NoteCard 
@@ -491,8 +532,8 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="sticky top-6 shrink-0 w-[420px]"
-              style={{ height: 'calc(100vh - 48px)' }}
+              className="sticky top-6 shrink-0 w-[420px] ml-6"
+              style={{ height: 'calc(100vh - 130px)' }}
             >
               <div className="h-full w-[420px] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
                 
@@ -625,31 +666,35 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
       </div>
 
       {/* ─── Premium Undo Toast Banner ─── */}
-      <AnimatePresence>
-        {showUndoToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 left-1/2 -translate-y-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
-          >
-            <span className="text-xs font-semibold text-slate-300">{toastMessage}</span>
-            <div className="w-px h-3.5 bg-white/10" />
-            <button
-              onClick={handleUndo}
-              className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+      {createPortal(
+        <AnimatePresence>
+          {showUndoToast && (
+            <motion.div
+              key="grid-undo-toast"
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-white/10 bg-[#121420]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
             >
-              Undo <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-black text-slate-300 border border-white/5 uppercase">Ctrl+Z</kbd>
-            </button>
-            <button
-              onClick={() => setShowUndoToast(false)}
-              className="p-1 hover:bg-white/5 rounded transition-all"
-            >
-              <X size={12} className="text-slate-500 hover:text-slate-300" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-350">{renderToastMessage(toastMessage)}</span>
+              <div className="w-px h-3.5 bg-white/10" />
+              <button
+                onClick={handleUndo}
+                className="text-[9.5px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
+              >
+                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
+              </button>
+              <button
+                onClick={() => setShowUndoToast(false)}
+                className="p-1 hover:bg-white/5 rounded transition-all cursor-pointer focus:outline-none"
+              >
+                <X size={12} className="text-slate-550 hover:text-white" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Custom Confirmation Modal */}
       <AnimatePresence>

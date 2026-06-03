@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { getBookmarks, addBookmark, updateBookmark, deleteBookmark, getCategories } from '../api';
 import BookmarkCard from '../components/Bookmarks/BookmarkCard';
 import CategoryCombobox from '../components/Shared/CategoryCombobox';
@@ -123,17 +124,13 @@ const Bookmarks = () => {
     };
   }, [categories]);
 
-  useEffect(() => {
-    fetchData();
-  }, [customCategories]);
-
   const fetchData = async () => {
     setLoading(true);
     try {
       const [bmRes, catRes] = await Promise.all([getBookmarks(), getCategories()]);
       setBookmarks(bmRes.data);
       const backendCats = catRes.data.bookmarks || [];
-      const combined = ['All', ...new Set([...customCategories, ...backendCats, ...bmRes.data.map(b => b.category || 'General')])];
+      const combined = ['All', ...new Set([...customCategories, ...backendCats, ...bmRes.data.map(i => i.category || 'General')])];
       setCategories(combined);
     } catch (err) {
       console.error("Failed to fetch bookmarks", err);
@@ -141,7 +138,11 @@ const Bookmarks = () => {
     setLoading(false);
   };
 
-  const handleUndo = async () => {
+  useEffect(() => {
+    fetchData();
+  }, [customCategories]);
+
+  const handleUndo = useCallback(async () => {
     if (undoStack.length === 0) return;
     const lastAction = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
@@ -152,7 +153,7 @@ const Bookmarks = () => {
     } catch (err) {
       console.error("Failed to undo deletion", err);
     }
-  };
+  }, [undoStack]);
 
   useEffect(() => {
     if (undoStack.length > 0) {
@@ -170,18 +171,41 @@ const Bookmarks = () => {
     }
   }, [undoStack]);
 
+  const undoStackRef = useRef(undoStack);
+  const handleUndoRef = useRef(handleUndo);
+
+  useEffect(() => {
+    undoStackRef.current = undoStack;
+  }, [undoStack]);
+
+  useEffect(() => {
+    handleUndoRef.current = handleUndo;
+  }, [handleUndo]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isEditingInput = activeEl && (
+        (activeEl.tagName === 'INPUT' && activeEl.value !== '') || 
+        (activeEl.tagName === 'TEXTAREA' && activeEl.value !== '') || 
+        activeEl.isContentEditable
+      );
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (undoStack.length > 0) {
+        if (!isEditingInput && undoStackRef.current.length > 0) {
           e.preventDefault();
-          handleUndo();
+          handleUndoRef.current();
+        }
+      } else if (e.key === 'Escape') {
+        setSelectedItemId(null);
+        if (document.activeElement) {
+          document.activeElement.blur();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack]);
+  }, []);
 
   // Keyboard handling for custom category confirmation modal
   useEffect(() => {
@@ -223,11 +247,13 @@ const Bookmarks = () => {
     e.preventDefault();
     if (!newTitle.trim() || !newUrl.trim()) return;
     try {
+      const fallbackCat = (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory)) ? 'General' : activeCategory;
+      const finalCategory = newCategoryVal || fallbackCat;
       const res = await addBookmark({
         title: newTitle,
         url: newUrl,
         description: newDescription,
-        category: newCategoryVal || 'General',
+        category: finalCategory,
         created: new Date().toISOString()
       });
       setBookmarks([res.data, ...bookmarks]);
@@ -238,8 +264,8 @@ const Bookmarks = () => {
       setShowAddForm(false);
       
       // Auto update categories
-      if (newCategoryVal && !categories.includes(newCategoryVal)) {
-        setCategories([...categories, newCategoryVal]);
+      if (finalCategory && !categories.includes(finalCategory)) {
+        setCategories([...categories, finalCategory]);
       }
     } catch (err) {
       console.error("Failed to add bookmark", err);
@@ -372,7 +398,7 @@ const Bookmarks = () => {
           setActiveCategory('All');
         }
         
-        loadData();
+        fetchData();
       }
     });
   };
@@ -396,6 +422,21 @@ const Bookmarks = () => {
     const bPinned = b.pinned ? 1 : 0;
     return bPinned - aPinned;
   });
+
+  const renderToastMessage = (message) => {
+    if (!message) return null;
+    const parts = message.split('Ctrl+Z');
+    if (parts.length === 2) {
+      return (
+        <>
+          {parts[0]}
+          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
+          {parts[1]}
+        </>
+      );
+    }
+    return message;
+  };
 
   return (
     <div className="w-full pb-20 premium-page-entrance">
@@ -426,7 +467,7 @@ const Bookmarks = () => {
         </AnimatePresence>
 
         {/* Center Column: Main Content Area */}
-        <div className="flex-1 min-w-0 max-w-[1300px] mx-auto w-full space-y-6 transition-all duration-300 pr-4">
+        <div className="flex-1 min-w-0 max-w-full mx-auto w-full px-6 space-y-6 transition-all duration-300">
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
@@ -439,15 +480,15 @@ const Bookmarks = () => {
                   }}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer select-none mr-2 ${
                     isSidebarCollapsed 
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] animate-pulse' 
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
                       : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-white'
                   }`}
-                  title={isSidebarCollapsed ? "Expand Categories" : "Collapse Categories"}
+                  title={isSidebarCollapsed ? "Expand Folders" : "Collapse Folders"}
                 >
                   {isSidebarCollapsed ? (
                     <>
                       <Folder className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Categories</span>
+                      <span>Folders</span>
                     </>
                   ) : (
                     <>
@@ -492,56 +533,58 @@ const Bookmarks = () => {
                 exit={{ height: 0, opacity: 0, marginBottom: 0 }}
                 transition={{ duration: 0.25 }}
                 onSubmit={handleIndexBookmark}
-                className="overflow-hidden bg-white/[0.01] hover:bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3"
+                className="overflow-hidden bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-blue-500/40 rounded-xl p-4 space-y-3 transition-all"
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Resource Title</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Title</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Google DeepMind"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      className="input-minimal text-xs py-2 h-9"
+                      className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Resource URL</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource URL</label>
                     <input
                       type="url"
                       required
                       placeholder="https://deepmind.google"
                       value={newUrl}
                       onChange={(e) => setNewUrl(e.target.value)}
-                      className="input-minimal text-xs py-2 h-9"
+                      className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Category / Tag</label>
-                    <CategoryCombobox
-                      value={newCategoryVal}
-                      onChange={(val) => setNewCategoryVal(val)}
-                      suggestions={categories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                      placeholder="Select or type category..."
-                      accentColor="blue"
-                    />
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Folder / Tag</label>
+                    <div className="text-slate-200">
+                      <CategoryCombobox
+                        value={newCategoryVal || (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory) ? '' : activeCategory)}
+                        onChange={(val) => setNewCategoryVal(val)}
+                        suggestions={categories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
+                        placeholder="Select or type folder..."
+                        accentColor="blue"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Resource Annotations</label>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Description (Optional)</label>
                   <div className="flex gap-3">
                     <input
                       type="text"
                       placeholder="e.g. Leading AI research group working on advanced models and solutions."
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
-                      className="flex-1 bg-white/[0.03] border border-border rounded-xl py-2.5 px-4 focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/20 transition-all placeholder:text-slate-600 text-xs text-foreground resize-none leading-relaxed"
+                      className="flex-1 bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-xl py-2.5 px-4 outline-none placeholder:text-slate-500 text-xs text-slate-200 resize-none leading-relaxed focus:ring-0"
                     />
                     <button 
                       type="submit" 
-                      className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-blue-500/10 shrink-0 self-end"
+                      className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-blue-500/10 shrink-0 self-end border border-blue-500/30"
                     >
                       Index
                     </button>
@@ -553,7 +596,7 @@ const Bookmarks = () => {
 
           <div 
             key={activeCategory}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 fade-in"
+            className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 fade-in"
           >
             {filteredBookmarks.map((bm) => (
               <div key={bm.id}>
@@ -587,8 +630,8 @@ const Bookmarks = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="sticky top-6 shrink-0 w-[420px]"
-              style={{ height: 'calc(100vh - 48px)' }}
+              className="sticky top-6 shrink-0 w-[420px] ml-6"
+              style={{ height: 'calc(100vh - 130px)' }}
             >
               <div className="h-full w-[420px] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
                 
@@ -838,31 +881,35 @@ const Bookmarks = () => {
       </div>
 
       {/* ─── Premium Undo Toast Banner ─── */}
-      <AnimatePresence>
-        {showUndoToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 left-1/2 -translate-y-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
-          >
-            <span className="text-xs font-semibold text-slate-300">{toastMessage}</span>
-            <div className="w-px h-3.5 bg-white/10" />
-            <button
-              onClick={handleUndo}
-              className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+      {createPortal(
+        <AnimatePresence>
+          {showUndoToast && (
+            <motion.div
+              key="bookmarks-undo-toast"
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-white/10 bg-[#121420]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
             >
-              Undo <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-black text-slate-300 border border-white/5 uppercase">Ctrl+Z</kbd>
-            </button>
-            <button
-              onClick={() => setShowUndoToast(false)}
-              className="p-1 hover:bg-white/5 rounded transition-all"
-            >
-              <X size={12} className="text-slate-500 hover:text-slate-300" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-350">{renderToastMessage(toastMessage)}</span>
+              <div className="w-px h-3.5 bg-white/10" />
+              <button
+                onClick={handleUndo}
+                className="text-[9.5px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
+              >
+                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
+              </button>
+              <button
+                onClick={() => setShowUndoToast(false)}
+                className="p-1 hover:bg-white/5 rounded transition-all cursor-pointer focus:outline-none"
+              >
+                <X size={12} className="text-slate-550 hover:text-white" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Custom Confirmation Modal */}
       <AnimatePresence>

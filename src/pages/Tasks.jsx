@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getTasks, addTask, updateTask, deleteTask } from '../api';
 import TaskItem from '../components/Tasks/TaskItem';
 import CategoryCombobox from '../components/Shared/CategoryCombobox';
@@ -6,7 +7,6 @@ import {
   Plus, 
   Search, 
   CheckCircle2, 
-  ListFilter, 
   Tag,
   Calendar,
   Trash2,
@@ -19,7 +19,9 @@ import {
   FileText,
   Zap,
   Folder,
-  FolderOpen
+  FolderOpen,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategorySidebar from '../components/Shared/CategorySidebar';
@@ -37,8 +39,14 @@ const Tasks = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('grid-sidebar-collapsed-tasks') === 'true';
   });
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('grid-tasks-viewmode') || 'grid';
+  });
+  const [newDueDate, setNewDueDate] = useState('');
+  const [draggedOverColumn, setDraggedOverColumn] = useState(null);
+  const [laneInputs, setLaneInputs] = useState({ high: '', medium: '', low: '' });
 
-  // Custom category management
+  // Custom categories list
   const [customCategories, setCustomCategories] = useState(() => {
     const saved = localStorage.getItem('custom-categories-tasks');
     try {
@@ -48,18 +56,13 @@ const Tasks = () => {
       return [];
     }
   });
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [newCatInput, setNewCatInput] = useState('');
 
-  // Keep track of the last selected task for smooth exit animation
-  const [lastSelectedTask, setLastSelectedTask] = useState(null);
-
-  // Global Undo System & Toast notification states
+  // Global Undo System & Toast state
   const [undoStack, setUndoStack] = useState([]);
   const [showUndoToast, setShowUndoToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Custom Category Confirmation Modal state
+  // Confirmation Modal overlays
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -67,62 +70,20 @@ const Tasks = () => {
     onConfirm: null
   });
 
-  const allCategories = ['All', ...new Set([...customCategories, ...tasks.map(t => t.list || 'Main')])];
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  const [showLeftScrollMask, setShowLeftScrollMask] = useState(false);
-  const [showRightScrollMask, setShowRightScrollMask] = useState(false);
-
-  const categoriesRef = useRef(null);
-
-  const checkScrollLimits = () => {
-    const el = categoriesRef.current;
-    if (!el) return;
-    setShowLeftScrollMask(el.scrollLeft > 2);
-    setShowRightScrollMask(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-  };
-
-  useEffect(() => {
-    const el = categoriesRef.current;
-    if (!el) return;
-
-    const handleWheel = (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
-  }, [allCategories]);
-
-  useEffect(() => {
-    const el = categoriesRef.current;
-    if (!el) return;
-
-    checkScrollLimits();
-    el.addEventListener('scroll', checkScrollLimits);
-    window.addEventListener('resize', checkScrollLimits);
-
-    return () => {
-      el.removeEventListener('scroll', checkScrollLimits);
-      window.removeEventListener('resize', checkScrollLimits);
-    };
-  }, [allCategories]);
-
-  // Inspector editing state
+  // Inspector edits
   const [editingName, setEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [editingNotes, setEditingNotes] = useState(false);
   const [editNotes, setEditNotes] = useState('');
-  const [editingCategory, setEditingCategory] = useState(false);
   const [editCategory, setEditCategory] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const nameInputRef = useRef(null);
   const notesRef = useRef(null);
 
+  // Fetch tasks
   const loadTasks = async () => {
     setLoading(true);
     try {
@@ -137,6 +98,10 @@ const Tasks = () => {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  useEffect(() => {
+    setNewCategory(activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory) ? '' : activeCategory);
+  }, [activeCategory]);
 
   const handleUndo = async () => {
     if (undoStack.length === 0) return;
@@ -154,15 +119,9 @@ const Tasks = () => {
   useEffect(() => {
     if (undoStack.length > 0) {
       const last = undoStack[undoStack.length - 1];
-      if (last.type === 'category_delete') {
-        setToastMessage(`Category "${last.categoryName}" deleted.`);
-      } else {
-        setToastMessage(`Task deleted.`);
-      }
+      setToastMessage(last.type === 'category_delete' ? `Category "${last.categoryName}" deleted.` : `Task deleted.`);
       setShowUndoToast(true);
-      const timer = setTimeout(() => {
-        setShowUndoToast(false);
-      }, 5000);
+      const timer = setTimeout(() => setShowUndoToast(false), 5000);
       return () => clearTimeout(timer);
     }
   }, [undoStack]);
@@ -174,6 +133,11 @@ const Tasks = () => {
           e.preventDefault();
           handleUndo();
         }
+      } else if (e.key === 'Escape') {
+        setSelectedTaskId(null);
+        if (document.activeElement) {
+          document.activeElement.blur();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -181,20 +145,91 @@ const Tasks = () => {
   }, [undoStack]);
 
   const handleAddTask = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newTask.trim()) return;
     try {
+      const fallbackList = (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory)) ? '' : activeCategory;
       const res = await addTask({ 
         text: newTask, 
         completed: false, 
         priority: newPriority,
-        list: newCategory || ''
+        list: newCategory || fallbackList,
+        dueDate: newDueDate || null
       });
       setTasks([res.data, ...tasks]);
       setNewTask('');
       setNewPriority('medium');
+      setNewDueDate('');
+      setSelectedTaskId(res.data.id);
     } catch (err) {
       console.error("Failed to add task", err);
+    }
+  };
+
+  const handleAddLaneTask = async (priority) => {
+    const text = laneInputs[priority]?.trim();
+    if (!text) return;
+    try {
+      const fallbackList = (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory)) ? '' : activeCategory;
+      const res = await addTask({ 
+        text, 
+        completed: false, 
+        priority,
+        list: fallbackList,
+        dueDate: null
+      });
+      setTasks([res.data, ...tasks]);
+      setLaneInputs(prev => ({ ...prev, [priority]: '' }));
+      setSelectedTaskId(res.data.id);
+    } catch (err) {
+      console.error("Failed to add lane task", err);
+    }
+  };
+
+
+
+  const handleCardDrop = async (taskId, targetColumn) => {
+    const id = parseInt(taskId) || taskId;
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    try {
+      let updates = {};
+      if (targetColumn === 'completed') {
+        if (!task.completed) {
+          updates.completed = true;
+        }
+      } else {
+        updates.priority = targetColumn;
+        if (task.completed) {
+          updates.completed = false;
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const res = await updateTask(id, updates);
+        setTasks(prev => prev.map(t => t.id === id ? res.data : t));
+        
+        if (selectedTaskId === id) {
+          setSelectedTaskId(null);
+          setTimeout(() => setSelectedTaskId(id), 50);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update task priority via drop", err);
+    }
+  };
+
+  const handleClearCompleted = async () => {
+    const completedList = tasks.filter(t => t.completed);
+    try {
+      for (const t of completedList) {
+        await deleteTask(t.id).catch(() => {});
+      }
+      setTasks(tasks.filter(t => !t.completed));
+      setShowClearConfirm(false);
+    } catch (err) {
+      console.error("Failed to clear completed tasks", err);
     }
   };
 
@@ -225,7 +260,6 @@ const Tasks = () => {
       setTasks(tasks.filter(t => t.id !== id));
       if (selectedTaskId === id) setSelectedTaskId(null);
 
-      // Add to undo stack
       setUndoStack(prev => [
         ...prev,
         {
@@ -238,7 +272,7 @@ const Tasks = () => {
               priority: taskToDelete.priority,
               list: taskToDelete.list || 'Main',
               notes: taskToDelete.notes || '',
-              due: taskToDelete.due || null
+              dueDate: taskToDelete.dueDate || null
             });
             setTasks(prevTasks => [res.data, ...prevTasks]);
           }
@@ -249,7 +283,6 @@ const Tasks = () => {
     }
   };
 
-  // Inspector update helpers
   const handleUpdateField = async (id, field, value) => {
     try {
       const res = await updateTask(id, { [field]: value });
@@ -260,36 +293,20 @@ const Tasks = () => {
   };
 
   const handleSaveName = async () => {
-    if (editName.trim() && editName !== selectedTask?.text) {
-      await handleUpdateField(selectedTaskId, 'text', editName.trim());
+    if (editName.trim() && editName !== focusedTask?.text) {
+      await handleUpdateField(focusedTask.id, 'text', editName.trim());
     }
     setEditingName(false);
   };
 
   const handleSaveNotes = async () => {
-    if (editNotes !== (selectedTask?.notes || '')) {
-      await handleUpdateField(selectedTaskId, 'notes', editNotes);
+    if (editNotes !== (focusedTask?.notes || '')) {
+      await handleUpdateField(focusedTask.id, 'notes', editNotes);
     }
     setEditingNotes(false);
   };
 
-  const handleSaveCategory = async () => {
-    const val = editCategory.trim() || '';
-    if (val !== (selectedTask?.list || '')) {
-      await handleUpdateField(selectedTaskId, 'list', val);
-    }
-    setEditingCategory(false);
-  };
-
-  const selectedTask = tasks.find(t => t.id === selectedTaskId);
-
-  useEffect(() => {
-    if (selectedTask) {
-      setLastSelectedTask(selectedTask);
-    }
-  }, [selectedTask]);
-
-  const displayTask = selectedTask || lastSelectedTask;
+  const allCategories = ['All', ...new Set([...customCategories, ...tasks.map(t => t.list || 'Main')])];
 
   const handleCreateCategory = (catName) => {
     if (catName && !customCategories.includes(catName)) {
@@ -306,12 +323,10 @@ const Tasks = () => {
       title: 'Delete Category',
       message: `Are you sure you want to delete the category "${cat}"? Associated tasks will be safely reassigned to "Main".`,
       onConfirm: async () => {
-        // 1. Remove from customCategories state
         const updatedCustom = customCategories.filter(c => c !== cat);
         setCustomCategories(updatedCustom);
         localStorage.setItem('custom-categories-tasks', JSON.stringify(updatedCustom));
         
-        // 2. Reassign tasks belonging to this category to 'Main' and cache for undo
         const itemsToUpdate = tasks.filter(t => (t.list || 'Main') === cat);
         const itemsReassigned = itemsToUpdate.map(t => ({ id: t.id, prevCat: cat }));
 
@@ -319,7 +334,6 @@ const Tasks = () => {
           await updateTask(t.id, { list: 'Main' }).catch(() => {});
         }
 
-        // Cache in undo stack
         setUndoStack(prev => [
           ...prev,
           {
@@ -355,12 +369,12 @@ const Tasks = () => {
       }
     });
   };
-  
+
+  // Filter evaluation
   const filteredTasks = (Array.isArray(tasks) ? tasks.filter(Boolean) : []).filter(t => {
     const matchesSearch = String(t.text || '').toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
 
-    // Evaluate smart filters vs custom categories
     if (['All', 'Today', 'Priority', 'Stale'].includes(activeCategory)) {
       const mappedItem = {
         ...t,
@@ -379,104 +393,20 @@ const Tasks = () => {
   });
   const completedTasks = filteredTasks.filter(t => t.completed);
 
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  // Focus targets
+  const focusedTask = tasks.find(t => t.id === selectedTaskId) || activeTasks[0] || tasks[0] || null;
 
-  const handleClearCompleted = async () => {
-    setShowClearConfirm(false);
-    try {
-      for (const task of completedTasks) {
-        await deleteTask(task.id).catch(() => {});
-      }
-      await loadTasks();
-    } catch (err) {
-      console.error('Failed to clear completed tasks:', err);
-    }
-  };
-
-  // Reset inspector edit states when switching tasks
   useEffect(() => {
     setEditingName(false);
     setEditingNotes(false);
-    setEditingCategory(false);
     setShowDeleteConfirm(false);
-    if (selectedTask) {
-      setEditName(selectedTask.text);
-      setEditNotes(selectedTask.notes || '');
-      setEditCategory(selectedTask.list || '');
+    if (focusedTask) {
+      setEditName(focusedTask.text);
+      setEditNotes(focusedTask.notes || '');
+      setEditCategory(focusedTask.list || '');
     }
-  }, [selectedTaskId]);
+  }, [focusedTask?.id]);
 
-  // Handle Enter to confirm, Escape to cancel when clear confirmation modal is open
-  useEffect(() => {
-    if (!showClearConfirm) return;
-
-    const handleConfirmKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        handleClearCompleted();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setShowClearConfirm(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleConfirmKeyDown);
-    return () => window.removeEventListener('keydown', handleConfirmKeyDown);
-  }, [showClearConfirm, completedTasks]);
-
-  // Keyboard handling for custom category confirmation modal
-  useEffect(() => {
-    if (!confirmModal.isOpen) return;
-
-    const handleConfirmKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        if (confirmModal.onConfirm) {
-          confirmModal.onConfirm();
-        }
-        setConfirmModal(prev => ({ ...prev, isOpen: false }));
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setConfirmModal(prev => ({ ...prev, isOpen: false }));
-      }
-    };
-
-    window.addEventListener('keydown', handleConfirmKeyDown);
-    return () => window.removeEventListener('keydown', handleConfirmKeyDown);
-  }, [confirmModal]);
-
-  // Keyboard handling for inline delete confirmation
-  useEffect(() => {
-    if (!showDeleteConfirm || !selectedTaskId) return;
-
-    const handleConfirmKeyDown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        setShowDeleteConfirm(false);
-        handleDelete(selectedTaskId);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        setShowDeleteConfirm(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleConfirmKeyDown);
-    return () => window.removeEventListener('keydown', handleConfirmKeyDown);
-  }, [showDeleteConfirm, selectedTaskId]);
-
-  // Close inspector on Escape
-  useEffect(() => {
-    if (!selectedTask || showClearConfirm || showDeleteConfirm) return;
-    const handleEsc = (e) => {
-      if (e.key === 'Escape' && !editingName && !editingNotes && !editingCategory) {
-        setSelectedTaskId(null);
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [selectedTask, showClearConfirm, showDeleteConfirm, editingName, editingNotes, editingCategory]);
-
-  // Focus name input when editing
   useEffect(() => {
     if (editingName && nameInputRef.current) {
       nameInputRef.current.focus();
@@ -484,18 +414,11 @@ const Tasks = () => {
     }
   }, [editingName]);
 
-  // Focus notes textarea when editing
   useEffect(() => {
     if (editingNotes && notesRef.current) {
       notesRef.current.focus();
     }
   }, [editingNotes]);
-
-  const priorityConfig = {
-    high: { label: 'High', color: 'rose', icon: '🔴' },
-    medium: { label: 'Medium', color: 'blue', icon: '🟡' },
-    low: { label: 'Low', color: 'slate', icon: '🟢' },
-  };
 
   const getDueDateLabel = (dateStr) => {
     if (!dateStr) return null;
@@ -503,22 +426,39 @@ const Tasks = () => {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return null;
       const now = new Date();
-      const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-      if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, className: 'text-rose-400' };
-      if (diff === 0) return { text: 'Due today', className: 'text-amber-400' };
-      if (diff === 1) return { text: 'Due tomorrow', className: 'text-amber-400' };
-      if (diff <= 7) return { text: `${diff} days left`, className: 'text-blue-400' };
-      return { text: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }), className: 'text-slate-400' };
+      now.setHours(0,0,0,0);
+      const target = new Date(date);
+      target.setHours(0,0,0,0);
+      const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+      if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, className: 'text-rose-500/80 font-bold' };
+      if (diff === 0) return { text: 'Today', className: 'text-amber-500/80 font-bold' };
+      if (diff === 1) return { text: 'Tomorrow', className: 'text-slate-400' };
+      return { text: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), className: 'text-slate-500' };
     } catch {
       return null;
     }
   };
 
+  const renderToastMessage = (message) => {
+    if (!message) return null;
+    const parts = message.split('Ctrl+Z');
+    if (parts.length === 2) {
+      return (
+        <>
+          {parts[0]}
+          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
+          {parts[1]}
+        </>
+      );
+    }
+    return message;
+  };
+
   return (
-    <div className="w-full pb-20 premium-page-entrance">
+    <div className="w-full pb-20 premium-page-entrance select-none text-slate-200">
       <div className="flex items-start w-full gap-0">
 
-        {/* Left Column: Category Sidebar */}
+        {/* Column 1: Collapsible Category Sidebar */}
         <AnimatePresence initial={false}>
           {!isSidebarCollapsed && (
             <motion.div
@@ -542,516 +482,830 @@ const Tasks = () => {
           )}
         </AnimatePresence>
 
-        {/* Center Column: Main task list area */}
-        <div className="flex-1 min-w-0 max-w-[1300px] mx-auto w-full space-y-6 transition-all duration-300 pr-4">
-          <header className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+        {/* Column 2: Main Focal Grid (Cards Viewport) */}
+        <div className="flex-1 min-w-0 max-w-full mx-auto w-full px-6 space-y-7 transition-all duration-300">
+          
+          {/* Main Header Row */}
+          <header className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/[0.02] gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isSidebarCollapsed;
+                  setIsSidebarCollapsed(next);
+                  localStorage.setItem('grid-sidebar-collapsed-tasks', String(next));
+                }}
+                className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all duration-300 active:scale-95 cursor-pointer ${
+                  !isSidebarCollapsed 
+                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' 
+                    : 'bg-white/[0.01] border-white/5 text-slate-400 hover:text-white'
+                }`}
+                title={isSidebarCollapsed ? "Collapse Folders" : "Expand Folders"}
+              >
+                {isSidebarCollapsed ? <Folder className="w-4 h-4 text-blue-400" /> : <FolderOpen className="w-4 h-4 text-slate-400" />}
+              </button>
+              
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-slate-555 uppercase block">Tasks Registry</span>
+                <h2 className="text-base font-extrabold text-white tracking-tight mt-0.5 uppercase">
+                  {activeCategory} Sector
+                </h2>
+              </div>
+            </div>
+
+            {/* Actions panel */}
+            <div className="flex items-center gap-3">
+              {/* Layout switch buttons */}
+              <div className="flex items-center p-0.5 bg-slate-950/45 border border-white/[0.03] backdrop-blur-md rounded-xl select-none">
                 <button
                   type="button"
                   onClick={() => {
-                    const next = !isSidebarCollapsed;
-                    setIsSidebarCollapsed(next);
-                    localStorage.setItem('grid-sidebar-collapsed-tasks', String(next));
+                    setViewMode('grid');
+                    localStorage.setItem('grid-tasks-viewmode', 'grid');
                   }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer select-none mr-2 ${
-                    isSidebarCollapsed 
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)] animate-pulse' 
-                      : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-white'
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9.5px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer active:scale-95 ${
+                    viewMode === 'grid'
+                      ? 'bg-accent-blue text-white shadow-[0_4px_12px_rgba(59,130,246,0.25)]'
+                      : 'text-slate-550 hover:text-slate-200 hover:bg-white/[0.02]'
                   }`}
-                  title={isSidebarCollapsed ? "Expand Categories" : "Collapse Categories"}
                 >
-                  {isSidebarCollapsed ? (
-                    <>
-                      <Folder className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Categories</span>
-                    </>
-                  ) : (
-                    <>
-                      <FolderOpen className="w-3.5 h-3.5" />
-                      <span>Hide Sidebar</span>
-                    </>
-                  )}
+                  <LayoutGrid size={11} />
+                  <span>Grid Deck</span>
                 </button>
-                Tasks
-                <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">
-                    {filteredTasks.filter(t => !t.completed).length} focus points
-                  </span>
-                </div>
-              </h2>
-            </div>
-
-            <div className="flex">
-              <div className="flex items-center px-3 py-1.5 gap-2 bg-[var(--color-background)] border border-[var(--color-border)] focus-within:border-[var(--color-accent-blue-bright)]/50 focus-within:ring-1 focus-within:ring-[var(--color-accent-blue)]/20 rounded-xl transition-all shadow-inner h-9">
-                <Search size={14} className="text-slate-500" />
-                <input 
-                    type="text" 
-                    placeholder="Search Tasks..." 
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs text-slate-200 placeholder:text-slate-600 w-36 font-medium"
-                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('board');
+                    localStorage.setItem('grid-tasks-viewmode', 'board');
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9.5px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer active:scale-95 ${
+                    viewMode === 'board'
+                      ? 'bg-accent-blue text-white shadow-[0_4px_12px_rgba(59,130,246,0.25)]'
+                      : 'text-slate-550 hover:text-slate-200 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <List size={11} />
+                  <span>Kanban Lanes</span>
+                </button>
               </div>
             </div>
           </header>
 
-          <form onSubmit={handleAddTask} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-[var(--color-background)] hover:bg-white/[0.03] border border-[var(--color-border)] rounded-xl shadow-2xl transition-all w-full h-12">
-            <Plus size={16} className="text-blue-500 shrink-0" />
-            <input
-              type="text"
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Create a new task..."
-              className="flex-1 bg-transparent border-none outline-none text-xs text-slate-100 placeholder:text-slate-500 h-full font-medium"
+          {/* Dedicated Filter/Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
+            <input 
+              type="text" 
+              placeholder="SEARCH OBJECTIVES DECK..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-minimal pl-10 text-xs py-2 h-10 uppercase font-bold tracking-wider"
             />
-            
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 w-36 shrink-0">
-                <CategoryCombobox
-                  value={newCategory}
-                  onChange={(val) => setNewCategory(val)}
-                  suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                  placeholder="List..."
-                  accentColor="rose"
-                  variant="minimal"
+          </div>
+
+          {/* Advanced Inline Task Deployer */}
+          <form onSubmit={handleAddTask} className="bg-slate-950/45 border border-white/[0.03] hover:border-white/[0.06] rounded-xl p-3.5 shadow-2xl transition-all space-y-3">
+            <div className="flex items-center gap-3">
+              <Plus size={15} className="text-blue-500 shrink-0" />
+              <input
+                type="text"
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                placeholder="DEPLOY NEW DIRECTIVE TARGET (PRESS ENTER)..."
+                className="flex-1 bg-transparent border-none outline-none text-xs text-slate-100 placeholder:text-slate-550 font-bold uppercase tracking-wider focus:ring-0 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 pt-2.5 border-t border-white/[0.02] text-[9px] font-mono tracking-widest uppercase text-slate-500">
+              <div className="flex items-center gap-2">
+                <span>Priority:</span>
+                <div className="flex items-center gap-2 font-bold">
+                  {['low', 'medium', 'high'].map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setNewPriority(p)}
+                      className={`transition-colors focus:outline-none cursor-pointer uppercase ${
+                        newPriority === p 
+                          ? p === 'high' 
+                            ? 'text-rose-400 font-black' 
+                            : p === 'medium' 
+                              ? 'text-blue-400 font-black' 
+                              : 'text-slate-300 font-black'
+                          : 'text-slate-600 hover:text-slate-400'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span>Sector:</span>
+                <div className="w-32 text-slate-300">
+                  <CategoryCombobox
+                    value={newCategory}
+                    onChange={(val) => setNewCategory(val)}
+                    suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
+                    placeholder="Assign folder..."
+                    accentColor="blue"
+                    variant="minimal"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span>Deadline:</span>
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  className="bg-transparent border-none p-0 outline-none text-[9.5px] font-mono text-slate-355 tracking-wider cursor-pointer w-22 focus:ring-0 focus:outline-none"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
 
-              <div className="flex items-center p-0.5 bg-white/[0.02] border border-white/5 rounded-lg">
-                {['low', 'medium', 'high'].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setNewPriority(p)}
-                    className={`px-2.5 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all ${
-                      newPriority === p
-                        ? p === 'high' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/10' :
-                          p === 'medium' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/10' :
-                          'bg-slate-600 text-white shadow-md shadow-slate-500/10'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-              
-              <button 
-                type="submit" 
-                className="h-8 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center active:scale-[0.96]"
+              <button
+                type="submit"
+                className="ml-auto px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest transition-all rounded-lg active:scale-95 shadow-md shadow-blue-500/10 border border-blue-500/30"
               >
-                Commit
+                Deploy
               </button>
             </div>
           </form>
 
-          <div className="grid gap-10">
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                  <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
-                  <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Active Pipeline</h3>
-              </div>
+          {/* Viewport content */}
+          <AnimatePresence mode="wait">
+            {viewMode === 'grid' ? (
               
-              <div key={activeCategory} className="grid gap-3 fade-in">
-                {activeTasks.map((task) => (
-                  <div 
-                    key={task.id} 
-                    className="minimal-card shadow-lg overflow-hidden border-white/10"
-                  >
-                    <TaskItem 
+              /* ====================================================
+                 GRID DECK PIPELINE
+                 ==================================================== */
+              <motion.div
+                key="grid-viewport"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-10"
+              >
+                {/* Active Grid Card List */}
+                <div className="space-y-4">
+                  <div className="text-[9.5px] font-mono tracking-widest text-slate-500 uppercase select-none px-0.5">
+                    Active targets
+                  </div>
+                  
+                  <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+                    {activeTasks.map((task) => (
+                      <TaskItem 
+                        key={task.id}
                         task={task} 
                         onToggle={handleToggle} 
                         onDelete={handleDelete}
                         onUpdatePriority={handleUpdatePriority}
                         isSelected={selectedTaskId === task.id}
                         onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
-                    />
+                      />
+                    ))}
                   </div>
-                ))}
-                
-                {activeTasks.length === 0 && !loading && (
-                  <div className="py-20 flex flex-col items-center justify-center text-center bg-white/[0.01] border-2 border-dashed border-border rounded-3xl">
-                      <div className="w-16 h-16 rounded-full bg-blue-500/5 flex items-center justify-center mb-6">
-                        <CheckCircle2 size={32} className="text-blue-500/40" />
-                      </div>
-                      <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">Neural clear. No active tasks.</p>
+
+                  {activeTasks.length === 0 && !loading && (
+                    <div className="py-20 text-center bg-white/[0.005] border border-dashed border-white/[0.02] rounded-xl select-none">
+                      <p className="text-[9.5px] font-mono text-slate-600 uppercase tracking-widest">Active cards database standby</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Completed Cards archives */}
+                {completedTasks.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-white/[0.01]">
+                    <div className="flex items-center justify-between px-0.5 text-[9.5px] font-mono tracking-widest text-slate-500 uppercase select-none">
+                      <span>Completed archives</span>
+                      <button
+                        onClick={() => setShowClearConfirm(true)}
+                        className="text-rose-500 hover:text-rose-455 transition-colors focus:outline-none cursor-pointer font-bold"
+                      >
+                        Purge Completed
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 opacity-70 hover:opacity-100 transition-opacity duration-300">
+                      {completedTasks.map((task) => (
+                        <TaskItem 
+                          key={task.id}
+                          task={task} 
+                          onToggle={handleToggle} 
+                          onDelete={handleDelete}
+                          onUpdatePriority={handleUpdatePriority}
+                          isSelected={selectedTaskId === task.id}
+                          onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
-            </section>
 
-            {completedTasks.length > 0 && (
-              <section className="space-y-6 opacity-40 hover:opacity-100 transition-all duration-500">
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-slate-700 rounded-full" />
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Completed Hub</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowClearConfirm(true)}
-                    className="px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white text-[9px] font-black uppercase tracking-wider transition-all"
-                  >
-                    Clear Completed
-                  </button>
-                </div>
-                <div key={activeCategory} className="grid gap-2 fade-in">
-                  {completedTasks.map((task) => (
-                    <div 
-                      key={task.id} 
-                      className="minimal-card bg-transparent border-dashed overflow-hidden"
-                    >
-                        <TaskItem 
-                            task={task} 
-                            onToggle={handleToggle} 
-                            onDelete={handleDelete}
-                            onUpdatePriority={handleUpdatePriority}
-                            isSelected={selectedTaskId === task.id}
-                            onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
-                        />
+              </motion.div>
+            ) : (
+              
+              /* ====================================================
+                 UPGRADED PREMIUM KANBAN BOARD VIEWPORT
+                 ==================================================== */
+              <motion.div
+                key="board-viewport"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start w-full select-none"
+              >
+                {/* 1. High priority Column */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setDraggedOverColumn('high'); }}
+                  onDragLeave={() => setDraggedOverColumn(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    handleCardDrop(id, 'high');
+                    setDraggedOverColumn(null);
+                  }}
+                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
+                    draggedOverColumn === 'high' 
+                      ? 'kanban-drop-active border-rose-500/35 bg-rose-500/[0.02]' 
+                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.7)] animate-pulse" />
+                      <span>High Focus</span>
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
-
-        {/* ─── Advanced Task Inspector Panel ─── */}
-        <AnimatePresence>
-          {selectedTaskId !== null && displayTask && (
-            <motion.div
-              key="task-inspector"
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="sticky top-6 shrink-0 w-[420px]"
-              style={{ height: 'calc(100vh - 48px)' }}
-            >
-              <div className="h-full w-[420px] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
-                
-                {/* Header bar */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-white/[0.02]">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-2 h-2 rounded-full ${displayTask.completed ? 'bg-emerald-500' : 'bg-blue-500'} shadow-[0_0_8px_currentColor]`} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Task Inspector</span>
+                    <span className="px-2.5 py-0.5 text-[9px] font-mono font-black text-rose-400 bg-rose-500/10 rounded-full border border-rose-500/20">
+                      {activeTasks.filter(t => t.priority === 'high').length}
+                    </span>
                   </div>
-                  <button 
-                    onClick={() => setSelectedTaskId(null)} 
-                    className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-all group"
-                  >
-                    <X size={14} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
-                  </button>
-                </div>
 
-                {/* Scrollable content */}
-                <div className="flex-1 overflow-y-auto no-scrollbar">
-                  
-                  {/* Task Name Section */}
-                  <div className="px-5 pt-5 pb-4">
-                    {editingName ? (
-                      <div className="space-y-2">
-                        <textarea
-                          ref={nameInputRef}
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveName(); }
-                            if (e.key === 'Escape') { setEditingName(false); setEditName(displayTask.text); }
-                          }}
-                          rows={2}
-                          className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-3 text-lg font-bold text-white outline-none resize-none focus:border-blue-500/60 transition-colors"
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => { setEditingName(false); setEditName(displayTask.text); }} className="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-all">Cancel</button>
-                          <button onClick={handleSaveName} className="px-3 py-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all">Save</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div 
-                        onClick={() => { setEditName(displayTask.text); setEditingName(true); }}
-                        className="group cursor-pointer"
-                      >
-                        <h3 className={`text-xl font-bold leading-snug tracking-tight transition-colors ${displayTask.completed ? 'text-slate-500 line-through' : 'text-white group-hover:text-blue-300'}`}>
-                          {displayTask.text}
-                        </h3>
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1.5 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Edit3 size={9} /> Click to edit
-                        </span>
+                  {/* Inline deploy input */}
+                  <div className="mb-4 mt-2">
+                    <div className="relative bg-white/[0.01] hover:bg-white/[0.02] focus-within:bg-black/20 border border-white/5 focus-within:border-rose-500/30 rounded-xl p-2.5 transition-all">
+                      <input
+                        type="text"
+                        value={laneInputs.high || ''}
+                        onChange={(e) => setLaneInputs(prev => ({ ...prev, high: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddLaneTask('high');
+                          }
+                        }}
+                        placeholder="+ DEPLOY HIGH TARGET..."
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3.5 overflow-y-auto no-scrollbar flex-1 pb-4">
+                    {activeTasks.filter(t => t.priority === 'high').map((task) => (
+                      <TaskItem 
+                        key={task.id} 
+                        task={task} 
+                        compact={true}
+                        onToggle={handleToggle} 
+                        onDelete={handleDelete}
+                        onUpdatePriority={handleUpdatePriority}
+                        isSelected={selectedTaskId === task.id}
+                        onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                      />
+                    ))}
+                    {activeTasks.filter(t => t.priority === 'high').length === 0 && (
+                      <div className="flex-1 border border-dashed border-white/[0.02] rounded-xl flex flex-col items-center justify-center py-16 px-4">
+                        <p className="text-[9px] font-mono text-slate-650 uppercase tracking-widest">Zone Clear</p>
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Status banner */}
-                  <div className="mx-5 mb-4">
-                    <button
-                      onClick={() => handleToggle(displayTask.id)}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all group ${
-                        displayTask.completed 
-                          ? 'bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-500/40' 
-                          : 'bg-blue-500/[0.08] border-blue-500/20 hover:border-blue-500/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${displayTask.completed ? 'bg-emerald-500/20' : 'bg-blue-500/20'}`}>
-                          {displayTask.completed ? <CheckCircle2 size={15} className="text-emerald-400" /> : <Zap size={15} className="text-blue-400" />}
-                        </div>
-                        <div className="text-left">
-                          <div className={`text-xs font-bold ${displayTask.completed ? 'text-emerald-400' : 'text-blue-400'}`}>
-                            {displayTask.completed ? 'Completed' : 'Active'}
-                          </div>
-                          <div className="text-[9px] text-slate-500 font-medium">
-                            {displayTask.completed ? 'Click to reactivate' : 'Click to mark done'}
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRight size={14} className={`${displayTask.completed ? 'text-emerald-500/40' : 'text-blue-500/40'} group-hover:translate-x-0.5 transition-transform`} />
-                    </button>
+                {/* 2. Medium priority Column */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setDraggedOverColumn('medium'); }}
+                  onDragLeave={() => setDraggedOverColumn(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    handleCardDrop(id, 'medium');
+                    setDraggedOverColumn(null);
+                  }}
+                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
+                    draggedOverColumn === 'medium' 
+                      ? 'kanban-drop-active border-accent-blue/35 bg-accent-blue/[0.02]' 
+                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent-blue shadow-[0_0_6px_rgba(96,165,250,0.7)] animate-pulse" />
+                      <span>Medium Focus</span>
+                    </div>
+                    <span className="px-2.5 py-0.5 text-[9px] font-mono font-black text-accent-blue-bright bg-accent-blue/10 rounded-full border border-accent-blue/20">
+                      {activeTasks.filter(t => t.priority === 'medium').length}
+                    </span>
                   </div>
 
-                  {/* Properties grid */}
-                  <div className="px-5 space-y-1">
-                    <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em] mb-3 px-1">Properties</div>
-                    
-                    {/* Priority */}
-                    <div className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-2.5">
-                        <Flag size={13} className="text-slate-500" />
-                        <span className="text-[11px] font-semibold text-slate-400">Priority</span>
-                      </div>
-                      <div className="flex items-center gap-1 p-0.5 bg-white/[0.03] border border-white/[0.06] rounded-lg">
-                        {['low', 'medium', 'high'].map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => handleUpdatePriority(displayTask.id, p)}
-                            className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${
-                              displayTask.priority === p
-                                ? p === 'high' ? 'bg-rose-500/90 text-white shadow-sm' :
-                                  p === 'medium' ? 'bg-blue-500/90 text-white shadow-sm' :
-                                  'bg-slate-500/90 text-white shadow-sm'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]'
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Category */}
-                    <div className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-white/[0.02] transition-colors gap-4">
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <Tag size={13} className="text-slate-500" />
-                        <span className="text-[11px] font-semibold text-slate-400">Category</span>
-                      </div>
-                      <div className="w-48 shrink-0">
-                        <CategoryCombobox
-                          value={editCategory}
-                          onChange={async (val) => {
-                            const trimmed = val.trim() || '';
-                            setEditCategory(trimmed);
-                            await handleUpdateField(displayTask.id, 'list', trimmed);
-                          }}
-                          suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                          placeholder="Select category..."
-                          accentColor="rose"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Due Date */}
-                    <div className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-white/[0.02] transition-colors">
-                      <div className="flex items-center gap-2.5">
-                        <Calendar size={13} className="text-slate-500" />
-                        <span className="text-[11px] font-semibold text-slate-400">Due Date</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {displayTask.dueDate && (() => {
-                          const info = getDueDateLabel(displayTask.dueDate);
-                          return info ? <span className={`text-[9px] font-bold ${info.className}`}>{info.text}</span> : null;
-                        })()}
-                        <div className="relative">
-                          <input
-                            type="date"
-                            value={displayTask.dueDate ? new Date(displayTask.dueDate).toISOString().split('T')[0] : ''}
-                            onChange={(e) => handleUpdateField(displayTask.id, 'dueDate', e.target.value || null)}
-                            className="bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.15] rounded-lg px-2.5 py-1 text-[10px] text-slate-300 font-semibold outline-none cursor-pointer focus:border-blue-500/40 transition-colors w-[120px]"
-                            style={{ colorScheme: 'dark' }}
-                          />
-                        </div>
-                        {displayTask.dueDate && (
-                          <button
-                            onClick={() => handleUpdateField(displayTask.id, 'dueDate', null)}
-                            className="p-1 hover:bg-white/[0.05] rounded-md transition-all"
-                            title="Clear date"
-                          >
-                            <X size={10} className="text-slate-600 hover:text-slate-400" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Created */}
-                    <div className="flex items-center justify-between py-2.5 px-3 rounded-xl">
-                      <div className="flex items-center gap-2.5">
-                        <Clock size={13} className="text-slate-500" />
-                        <span className="text-[11px] font-semibold text-slate-400">Created</span>
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-600">
-                        {(() => {
-                          if (!displayTask.createdAt) return 'Unknown';
-                          try {
-                            const d = new Date(displayTask.createdAt);
-                            return isNaN(d.getTime()) 
-                              ? 'Unknown' 
-                              : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                          } catch {
-                            return 'Unknown';
+                  {/* Inline deploy input */}
+                  <div className="mb-4 mt-2">
+                    <div className="relative bg-white/[0.01] hover:bg-white/[0.02] focus-within:bg-black/20 border border-white/5 focus-within:border-accent-blue/30 rounded-xl p-2.5 transition-all">
+                      <input
+                        type="text"
+                        value={laneInputs.medium || ''}
+                        onChange={(e) => setLaneInputs(prev => ({ ...prev, medium: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddLaneTask('medium');
                           }
-                        })()}
+                        }}
+                        placeholder="+ DEPLOY MEDIUM TARGET..."
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3.5 overflow-y-auto no-scrollbar flex-1 pb-4">
+                    {activeTasks.filter(t => t.priority === 'medium').map((task) => (
+                      <TaskItem 
+                        key={task.id} 
+                        task={task} 
+                        compact={true}
+                        onToggle={handleToggle} 
+                        onDelete={handleDelete}
+                        onUpdatePriority={handleUpdatePriority}
+                        isSelected={selectedTaskId === task.id}
+                        onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                      />
+                    ))}
+                    {activeTasks.filter(t => t.priority === 'medium').length === 0 && (
+                      <div className="flex-1 border border-dashed border-white/[0.02] rounded-xl flex flex-col items-center justify-center py-16 px-4">
+                        <p className="text-[9px] font-mono text-slate-655 uppercase tracking-widest">Zone Clear</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Low priority Column */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setDraggedOverColumn('low'); }}
+                  onDragLeave={() => setDraggedOverColumn(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    handleCardDrop(id, 'low');
+                    setDraggedOverColumn(null);
+                  }}
+                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
+                    draggedOverColumn === 'low' 
+                      ? 'kanban-drop-active border-slate-500/35 bg-white/[0.01]' 
+                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                      <span>Low Focus</span>
+                    </div>
+                    <span className="px-2.5 py-0.5 text-[9px] font-mono font-black text-slate-400 bg-white/[0.03] rounded-full border border-white/10">
+                      {activeTasks.filter(t => t.priority === 'low').length}
+                    </span>
+                  </div>
+
+                  {/* Inline deploy input */}
+                  <div className="mb-4 mt-2">
+                    <div className="relative bg-white/[0.01] hover:bg-white/[0.02] focus-within:bg-black/20 border border-white/5 focus-within:border-white/10 rounded-xl p-2.5 transition-all">
+                      <input
+                        type="text"
+                        value={laneInputs.low || ''}
+                        onChange={(e) => setLaneInputs(prev => ({ ...prev, low: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddLaneTask('low');
+                          }
+                        }}
+                        placeholder="+ DEPLOY LOW TARGET..."
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3.5 overflow-y-auto no-scrollbar flex-1 pb-4">
+                    {activeTasks.filter(t => t.priority === 'low').map((task) => (
+                      <TaskItem 
+                        key={task.id} 
+                        task={task} 
+                        compact={true}
+                        onToggle={handleToggle} 
+                        onDelete={handleDelete}
+                        onUpdatePriority={handleUpdatePriority}
+                        isSelected={selectedTaskId === task.id}
+                        onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                      />
+                    ))}
+                    {activeTasks.filter(t => t.priority === 'low').length === 0 && (
+                      <div className="flex-1 border border-dashed border-white/[0.02] rounded-xl flex flex-col items-center justify-center py-16 px-4">
+                        <p className="text-[9px] font-mono text-slate-655 uppercase tracking-widest">Zone Clear</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Completed Column */}
+                <div 
+                  onDragOver={(e) => { e.preventDefault(); setDraggedOverColumn('completed'); }}
+                  onDragLeave={() => setDraggedOverColumn(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    handleCardDrop(id, 'completed');
+                    setDraggedOverColumn(null);
+                  }}
+                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
+                    draggedOverColumn === 'completed' 
+                      ? 'kanban-drop-active border-emerald-500/35 bg-emerald-500/[0.02]' 
+                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-2 mb-4 px-0.5">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-355 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)] animate-pulse" />
+                      <span>Completed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {completedTasks.length > 0 && (
+                        <button
+                          onClick={() => setShowClearConfirm(true)}
+                          className="text-[8px] font-bold text-rose-500 hover:text-rose-450 transition-colors focus:outline-none cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <span className="px-2.5 py-0.5 text-[9px] font-mono font-black text-emerald-400 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                        {completedTasks.length}
                       </span>
                     </div>
                   </div>
 
-                  {/* Divider */}
-                  <div className="mx-5 my-4 border-t border-white/[0.04]" />
-
-                  {/* Notes Section */}
-                  <div className="px-5 pb-5">
-                    <div className="flex items-center justify-between mb-3 px-1">
-                      <div className="flex items-center gap-2">
-                        <FileText size={12} className="text-slate-500" />
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.25em]">Notes</span>
+                  <div className="flex flex-col gap-3.5 overflow-y-auto no-scrollbar flex-1 pb-4 mt-2">
+                    {completedTasks.map((task) => (
+                      <TaskItem 
+                        key={task.id} 
+                        task={task} 
+                        compact={true}
+                        onToggle={handleToggle} 
+                        onDelete={handleDelete}
+                        onUpdatePriority={handleUpdatePriority}
+                        isSelected={selectedTaskId === task.id}
+                        onClick={() => setSelectedTaskId(selectedTaskId === task.id ? null : task.id)}
+                      />
+                    ))}
+                    {completedTasks.length === 0 && (
+                      <div className="flex-1 border border-dashed border-white/[0.02] rounded-xl flex flex-col items-center justify-center py-16 px-4">
+                        <p className="text-[9px] font-mono text-slate-655 uppercase tracking-widest">Archive Empty</p>
                       </div>
-                      {!editingNotes && (displayTask.notes || '').length > 0 && (
-                        <button
-                          onClick={() => { setEditNotes(displayTask.notes || ''); setEditingNotes(true); }}
-                          className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors flex items-center gap-1"
-                        >
-                          <Edit3 size={9} /> Edit
-                        </button>
-                      )}
-                    </div>
-                    
-                    {editingNotes ? (
-                      <div className="space-y-2">
-                        <textarea
-                          ref={notesRef}
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') { setEditingNotes(false); setEditNotes(displayTask.notes || ''); }
-                          }}
-                          rows={5}
-                          placeholder="Add notes, details, or context..."
-                          className="w-full bg-white/[0.03] border border-white/[0.08] focus:border-blue-500/30 rounded-xl px-4 py-3 text-[12px] text-slate-300 placeholder:text-slate-600 outline-none resize-none font-medium leading-relaxed transition-colors"
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => { setEditingNotes(false); setEditNotes(displayTask.notes || ''); }} className="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-all">Cancel</button>
-                          <button onClick={handleSaveNotes} className="px-3 py-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all">Save</button>
-                        </div>
-                      </div>
-                    ) : (displayTask.notes || '').length > 0 ? (
-                      <div 
-                        onClick={() => { setEditNotes(displayTask.notes || ''); setEditingNotes(true); }}
-                        className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] cursor-pointer hover:border-white/[0.1] transition-colors group"
-                      >
-                        <p className="text-[12px] text-slate-400 leading-relaxed whitespace-pre-wrap">{displayTask.notes}</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setEditNotes(''); setEditingNotes(true); }}
-                        className="w-full p-4 rounded-xl border-2 border-dashed border-white/[0.05] hover:border-blue-500/20 hover:bg-blue-500/[0.02] flex flex-col items-center justify-center gap-2 group transition-all cursor-pointer"
-                      >
-                        <FileText size={18} className="text-slate-700 group-hover:text-blue-500/50 transition-colors" />
-                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-slate-400 uppercase tracking-widest transition-colors">Add notes</span>
-                      </button>
                     )}
                   </div>
                 </div>
+              </motion.div>
 
-                {/* Bottom action bar */}
-                <div className="border-t border-white/[0.06] bg-white/[0.015] px-5 py-3.5 flex items-center gap-2">
-                  <button
-                    onClick={() => handleToggle(displayTask.id)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
-                      displayTask.completed
-                        ? 'bg-amber-500/[0.08] border border-amber-500/20 text-amber-400 hover:bg-amber-500/[0.15] hover:border-amber-500/30'
-                        : 'bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/[0.15] hover:border-emerald-500/30'
-                    }`}
-                  >
-                    {displayTask.completed ? <RotateCcw size={12} /> : <CheckCircle2 size={12} />}
-                    {displayTask.completed ? 'Reactivate' : 'Complete'}
-                  </button>
+            )}
+          </AnimatePresence>
+        </div>
 
-                  {showDeleteConfirm ? (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="px-3 py-2.5 rounded-xl text-[10px] font-bold text-slate-400 hover:text-white bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-all"
-                      >
-                        No
-                      </button>
-                      <button
-                        onClick={() => { setShowDeleteConfirm(false); handleDelete(displayTask.id); }}
-                        className="px-3 py-2.5 rounded-xl text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 border border-rose-400/20 shadow-lg shadow-rose-500/10 transition-all"
-                      >
-                        Delete
-                      </button>
+        {/* Column 3: Telemetry Details Workspace (Right Inspector) */}
+        <AnimatePresence>
+          {selectedTaskId !== null && focusedTask && (() => {
+            const totalInScope = filteredTasks.length;
+            const completedInScope = completedTasks.length;
+            const progressPercent = totalInScope > 0 ? Math.round((completedInScope / totalInScope) * 100) : 0;
+
+            return (
+              <motion.div
+                key="task-inspector"
+                initial={{ opacity: 0, x: 120 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 120 }}
+                transition={{ type: "spring", damping: 28, stiffness: 260 }}
+                className="sticky top-6 shrink-0 w-[420px] ml-6"
+                style={{ height: 'calc(100vh - 130px)' }}
+              >
+                <div className="h-full w-[420px] flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-[-15px_0_50px_rgba(0,0,0,0.6)] overflow-hidden">
+                  
+                  {/* Linear visual completion indicator */}
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-white/[0.02] overflow-hidden">
+                    <div 
+                      className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+
+                  {/* Header bar */}
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.04] bg-white/[0.01] mt-[1.5px] select-none">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2 h-2 rounded-full ${focusedTask.completed ? 'bg-emerald-500' : 'bg-blue-500'} shadow-[0_0_10px_currentColor]`} />
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">TELEMETRY SHEETS</span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="p-2.5 rounded-xl bg-rose-500/[0.06] border border-rose-500/15 text-rose-400 hover:bg-rose-500/[0.15] hover:border-rose-500/30 transition-all"
+                    <button 
+                      onClick={() => setSelectedTaskId(null)} 
+                      className="p-1.5 hover:bg-white/[0.06] rounded-lg transition-all group cursor-pointer focus:outline-none"
                     >
-                      <Trash2 size={13} />
+                      <X size={14} className="text-slate-550 group-hover:text-white transition-colors" />
                     </button>
-                  )}
+                  </div>
+
+                  {/* Scrollable details body */}
+                  <div className="flex-1 overflow-y-auto no-scrollbar px-6 py-5 space-y-6">
+                    
+                    {/* Visual metrics bar text */}
+                    <div className="p-4 bg-[#121629]/10 border border-white/[0.03] rounded-xl flex items-center justify-between text-[10px] font-mono tracking-widest uppercase font-bold text-slate-500 select-none">
+                      <span>Folder clearing:</span>
+                      <span className="text-blue-400">{completedInScope} / {totalInScope} ({progressPercent}%)</span>
+                    </div>
+
+                    {/* Task Title */}
+                    <div className="space-y-1.5">
+                      <div className="text-[8.5px] font-mono tracking-widest text-slate-500 uppercase select-none px-1">Objective</div>
+                      {editingName ? (
+                        <div className="space-y-2">
+                          <textarea
+                            ref={nameInputRef}
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveName(); }
+                              if (e.key === 'Escape') { setEditingName(false); setEditName(focusedTask.text); }
+                            }}
+                            rows={2}
+                            className="w-full bg-[#080a10] border border-blue-500/30 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none resize-none focus:border-blue-500/50 uppercase tracking-wider transition-colors focus:ring-0"
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => { setEditingName(false); setEditName(focusedTask.text); }} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-white rounded-lg hover:bg-white/[0.03] transition-all cursor-pointer">Cancel</button>
+                            <button onClick={handleSaveName} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all cursor-pointer">Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          onClick={() => { setEditName(focusedTask.text); setEditingName(true); }}
+                          className="group cursor-pointer p-4 bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.03] hover:border-white/[0.06] rounded-xl transition-all"
+                        >
+                          <h3 className={`text-[13px] font-bold leading-relaxed tracking-wide transition-colors uppercase ${focusedTask.completed ? 'text-slate-550 line-through' : 'text-slate-100 group-hover:text-blue-400'}`}>
+                            {focusedTask.text}
+                          </h3>
+                          <span className="text-[8px] font-mono tracking-widest text-slate-600 uppercase mt-2 inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <Edit3 size={9} /> Click to edit directive title
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Parameters Grid */}
+                    <div className="space-y-3">
+                      <div className="text-[8.5px] font-mono tracking-widest text-slate-500 uppercase select-none px-1">Parameters</div>
+                      
+                      <div className="bg-[#161a35] border border-white/[0.08] rounded-xl p-2.5 divide-y divide-white/[0.03] space-y-3.5 select-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                        
+                        {/* Focus Priority selector */}
+                        <div className="flex items-center justify-between pt-1 pb-1 px-1.5 gap-4">
+                          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider font-bold text-slate-500">
+                            <Flag size={12} />
+                            <span>Priority Index</span>
+                          </div>
+                          <div className="flex items-center gap-1 p-0.5 bg-black/40 border border-white/5 rounded-lg w-48 shrink-0">
+                            {['low', 'medium', 'high'].map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => handleUpdatePriority(focusedTask.id, p)}
+                                className={`flex-1 text-[8.5px] py-1 rounded font-black uppercase tracking-wider transition-all cursor-pointer focus:outline-none ${
+                                  focusedTask.priority === p
+                                    ? p === 'high' 
+                                      ? 'bg-rose-500 text-white shadow-sm' 
+                                      : p === 'medium' 
+                                        ? 'bg-blue-600 text-white shadow-sm' 
+                                        : 'bg-slate-600 text-white'
+                                    : 'text-slate-550 hover:text-slate-350 hover:bg-white/[0.02]'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Category list sector */}
+                        <div className="flex items-center justify-between pt-3.5 pb-1 px-1.5 gap-4">
+                          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider font-bold text-slate-500">
+                            <Tag size={12} />
+                            <span>Sector Assignment</span>
+                          </div>
+                          <div className="w-48 shrink-0">
+                            <CategoryCombobox
+                              value={editCategory}
+                              onChange={async (val) => {
+                                const trimmed = val.trim() || '';
+                                setEditCategory(trimmed);
+                                await handleUpdateField(focusedTask.id, 'list', trimmed);
+                              }}
+                              suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
+                              placeholder="Select Category..."
+                              accentColor="blue"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Calendar Due Date */}
+                        <div className="flex items-center justify-between pt-3.5 pb-1 px-1.5 gap-4">
+                          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider font-bold text-slate-500">
+                            <Calendar size={12} />
+                            <span>Deadline Date</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {focusedTask.dueDate && (() => {
+                              const info = getDueDateLabel(focusedTask.dueDate);
+                              return info ? <span className={`text-[8.5px] font-mono tracking-wider uppercase px-2 py-0.5 rounded border ${info.className}`}>{info.text}</span> : null;
+                            })()}
+                            <div className="relative">
+                              <input
+                                type="date"
+                                value={focusedTask.dueDate ? new Date(focusedTask.dueDate).toISOString().split('T')[0] : ''}
+                                onChange={(e) => handleUpdateField(focusedTask.id, 'dueDate', e.target.value || null)}
+                                className="bg-black/30 border border-white/10 hover:border-blue-500/30 rounded-lg px-2.5 py-1 text-[10px] text-slate-355 font-bold uppercase tracking-wider outline-none cursor-pointer focus:border-blue-500/40 transition-colors w-[120px] focus:ring-0 focus:outline-none"
+                                style={{ colorScheme: 'dark' }}
+                              />
+                            </div>
+                            {focusedTask.dueDate && (
+                              <button
+                                onClick={() => handleUpdateField(focusedTask.id, 'dueDate', null)}
+                                className="p-1 hover:bg-white/[0.05] rounded-md transition-all cursor-pointer focus:outline-none"
+                              >
+                                <X size={11} className="text-slate-550 hover:text-white" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Created time log info */}
+                        <div className="flex items-center justify-between pt-3.5 pb-1 px-1.5 gap-4">
+                          <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider font-bold text-slate-500">
+                            <Clock size={12} />
+                            <span>Created Log</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-550 font-mono tracking-wider uppercase">
+                            {(() => {
+                              if (!focusedTask.createdAt) return 'UNKNOWN';
+                              try {
+                                const d = new Date(focusedTask.createdAt);
+                                return isNaN(d.getTime()) 
+                                  ? 'UNKNOWN' 
+                                  : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+                              } catch {
+                                return 'UNKNOWN';
+                              }
+                            })()}
+                          </span>
+                        </div>
+
+                      </div>
+                    </div>
+
+                    {/* Context description notepad */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between mb-1.5 px-1 select-none">
+                        <div className="flex items-center gap-2 text-[8.5px] font-mono tracking-widest text-slate-555 uppercase">
+                          <FileText size={12} />
+                          <span>Notebook logs</span>
+                        </div>
+                        {!editingNotes && (focusedTask.notes || '').length > 0 && (
+                          <button
+                            onClick={() => { setEditNotes(focusedTask.notes || ''); setEditingNotes(true); }}
+                            className="text-[9px] font-black uppercase tracking-wider text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 cursor-pointer focus:outline-none"
+                          >
+                            <Edit3 size={9} /> Edit Log
+                          </button>
+                        )}
+                      </div>
+                      
+                      {editingNotes ? (
+                        <div className="space-y-2">
+                          <textarea
+                            ref={notesRef}
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') { setEditingNotes(false); setEditNotes(focusedTask.notes || ''); }
+                            }}
+                            rows={6}
+                            placeholder="WRITE LOG DATA AND CONTEXT INSTRUCTIONS..."
+                            className="w-full bg-[#080a10] border border-white/10 focus:border-blue-500/30 rounded-xl px-4 py-3.5 text-xs text-slate-300 placeholder:text-slate-655 outline-none resize-none font-bold uppercase tracking-wider leading-relaxed transition-colors focus:ring-0"
+                          />
+                          <div className="flex gap-2 justify-end select-none">
+                            <button onClick={() => { setEditingNotes(false); setEditNotes(focusedTask.notes || ''); }} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-white rounded-lg hover:bg-white/[0.03] transition-all cursor-pointer">Cancel</button>
+                            <button onClick={handleSaveNotes} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all cursor-pointer">Save</button>
+                          </div>
+                        </div>
+                      ) : (focusedTask.notes || '').length > 0 ? (
+                        <div 
+                          onClick={() => { setEditNotes(focusedTask.notes || ''); setEditingNotes(true); }}
+                          className="p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.03] hover:border-white/[0.06] cursor-pointer transition-colors"
+                        >
+                          <p className="text-xs text-slate-455 leading-relaxed font-semibold uppercase tracking-wide whitespace-pre-wrap">{focusedTask.notes}</p>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setEditNotes(''); setEditingNotes(true); }}
+                          className="w-full p-5 rounded-xl border border-dashed border-white/[0.03] hover:border-blue-500/20 hover:bg-blue-500/[0.01] flex flex-col items-center justify-center gap-2 transition-all cursor-pointer focus:outline-none select-none"
+                        >
+                          <FileText size={16} className="text-slate-700" />
+                          <span className="text-[9px] font-black text-slate-550 uppercase tracking-widest">Append Context Log</span>
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
+
+                  {/* Inspector bottom drawer actions */}
+                  <div className="border-t border-white/[0.04] bg-white/[0.005] px-5 py-4 flex items-center gap-2 select-none">
+                    <button
+                      onClick={() => handleToggle(focusedTask.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer focus:outline-none ${
+                        focusedTask.completed
+                          ? 'bg-amber-500/5 border border-amber-500/20 text-amber-400 hover:bg-amber-500/10'
+                          : 'bg-emerald-500/5 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10'
+                      }`}
+                    >
+                      {focusedTask.completed ? <RotateCcw size={12} /> : <CheckCircle2 size={12} />}
+                      {focusedTask.completed ? 'Reactivate target' : 'Archive Objective'}
+                    </button>
+
+                    {showDeleteConfirm ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="px-4.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-white bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all cursor-pointer focus:outline-none"
+                        >
+                          No
+                        </button>
+                        <button
+                          onClick={() => { setShowDeleteConfirm(false); handleDelete(focusedTask.id); }}
+                          className="px-4.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/20 shadow-lg shadow-rose-500/15 transition-all cursor-pointer focus:outline-none"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-rose-455 hover:bg-rose-500/10 transition-all cursor-pointer focus:outline-none"
+                        title="Purge Task"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+
                 </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
       </div>
 
-      {/* Custom Clear Completed Tasks Confirmation Modal */}
+      {/* Confirmation Modal - Clear Completed */}
       <AnimatePresence>
         {showClearConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md px-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.2 }}
-              className="w-full max-w-md bg-[#0a0a0d]/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-6 relative text-center"
+              className="w-full max-w-sm bg-[#0a0a0d] border border-white/5 rounded-xl p-5 text-center shadow-2xl select-none"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-6 h-6 text-rose-400 animate-pulse" />
-              </div>
-              
-              <h3 className="text-md font-bold text-white tracking-tight mb-2">
-                Clear Completed Tasks?
+              <h3 className="text-xs font-mono font-black uppercase tracking-widest text-white mb-2">
+                Purge Completed Tasks?
               </h3>
               
-              <p className="text-xs text-slate-400 leading-relaxed mb-6">
-                Are you sure you want to permanently clear all completed tasks? This action cannot be undone.
+              <p className="text-[11px] font-medium tracking-wide uppercase text-slate-550 leading-relaxed mb-5">
+                Are you sure you want to permanently clear all completed tasks from storage? This operation is final.
               </p>
               
-              <div className="flex items-center gap-3 justify-center">
+              <div className="flex items-center gap-3 justify-center text-[9.5px] font-mono font-bold tracking-widest uppercase">
                 <button
                   onClick={() => setShowClearConfirm(false)}
-                  className="px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/20 text-slate-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.04] text-xxs font-bold uppercase tracking-wider transition-all"
+                  className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer focus:outline-none"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleClearCompleted}
-                  className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-xl hover:shadow-rose-500/10 border border-rose-400/20 text-xxs font-bold uppercase tracking-wider transition-all"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
                 >
-                  Clear Tasks
+                  Confirm Purge
                 </button>
               </div>
             </motion.div>
@@ -1059,34 +1313,7 @@ const Tasks = () => {
         )}
       </AnimatePresence>
 
-      {/* ─── Premium Undo Toast Banner ─── */}
-      <AnimatePresence>
-        {showUndoToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-6 left-1/2 -translate-y-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
-          >
-            <span className="text-xs font-semibold text-slate-300">{toastMessage}</span>
-            <div className="w-px h-3.5 bg-white/10" />
-            <button
-              onClick={handleUndo}
-              className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
-            >
-              Undo <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-black text-slate-300 border border-white/5 uppercase">Ctrl+Z</kbd>
-            </button>
-            <button
-              onClick={() => setShowUndoToast(false)}
-              className="p-1 hover:bg-white/5 rounded transition-all"
-            >
-              <X size={12} className="text-slate-500 hover:text-slate-300" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Custom Confirmation Modal */}
+      {/* Confirmation Modal - Custom Categories */}
       <AnimatePresence>
         {confirmModal.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1095,35 +1322,27 @@ const Tasks = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/80 space-y-6 z-10"
+              className="relative w-full max-w-sm overflow-hidden rounded-xl border border-white/5 bg-[#0c0e17] p-5 shadow-2xl z-10 text-center select-none"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
-                  <Trash2 size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                    {confirmModal.title}
-                  </h3>
-                  <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mt-0.5">Critical Action</p>
-                </div>
-              </div>
+              <h3 className="text-xs font-mono font-black uppercase tracking-widest text-slate-200 mb-2">
+                {confirmModal.title}
+              </h3>
 
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-[11px] font-medium tracking-wide uppercase text-slate-550 leading-relaxed mb-5">
                 {confirmModal.message}
               </p>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-center gap-3 text-[9.5px] font-mono font-bold tracking-widest uppercase">
                 <button
                   onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 hover:text-white border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                  className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-455 hover:text-white transition-colors cursor-pointer focus:outline-none"
                 >
                   Cancel
                 </button>
@@ -1134,15 +1353,48 @@ const Tasks = () => {
                     }
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
                   }}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/10 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
                 >
-                  Confirm Delete
+                  Confirm Action
                 </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Undo Toast notification banner */}
+      {createPortal(
+        <AnimatePresence>
+          {showUndoToast && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.9 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3.5 px-4.5 py-3 rounded-xl border border-white/10 bg-[#121420]/95 backdrop-blur-xl shadow-2xl shadow-black/80"
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-350">{renderToastMessage(toastMessage)}</span>
+              <div className="w-px h-3.5 bg-white/10" />
+              <button
+                onClick={handleUndo}
+                className="text-[9.5px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
+              >
+                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
+              </button>
+              <button
+                onClick={() => setShowUndoToast(false)}
+                className="p-1 hover:bg-white/5 rounded transition-all cursor-pointer focus:outline-none"
+              >
+                <X size={12} className="text-slate-550 hover:text-white" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+
+
     </div>
   );
 };
