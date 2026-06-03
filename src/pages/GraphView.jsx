@@ -40,7 +40,18 @@ const GraphView = () => {
     plasma: '#080612',
     matrix: '#040706'
   };
+  const themeAccents = {
+    carbon: '#3b82f6',
+    plasma: '#a855f7',
+    matrix: '#10b981'
+  };
+  const themeAccentBrights = {
+    carbon: '#60a5fa',
+    plasma: '#c084fc',
+    matrix: '#34d399'
+  };
   const currentBgColor = themeBackgrounds[activeTheme] || '#0c0e17';
+  const currentAccentColor = themeAccents[activeTheme] || '#3b82f6';
   const draggedNodeRef = useRef(null);
 
   // Core visual data
@@ -833,9 +844,9 @@ const GraphView = () => {
     // 3.5. Group Lasso Glowing Ring Highlight
     const isLassoSelected = selectedLassoNodes.has(String(node.id));
     if (isLassoSelected) {
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = currentAccentColor;
       ctx.lineWidth = 1.8;
-      ctx.shadowColor = '#3b82f6';
+      ctx.shadowColor = currentAccentColor;
       ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.arc(node.x, node.y, size + 4.5, 0, 2 * Math.PI);
@@ -1276,7 +1287,7 @@ const GraphView = () => {
           linkDirectionalParticles={physics.showParticles ? (l => (highlightLinks.has(l) ? 4 : 1)) : 0}
           linkDirectionalParticleSpeed={l => (highlightLinks.has(l) ? 0.012 : 0.004)}
           linkDirectionalParticleWidth={1.8}
-          linkDirectionalParticleColor={() => COLORS.particle}
+          linkDirectionalParticleColor={() => themeAccentBrights[activeTheme] || '#60a5fa'}
 
           d3AlphaDecay={0.07}
           d3VelocityDecay={physics.velocityDecay}
@@ -1286,12 +1297,15 @@ const GraphView = () => {
         {/* Floating lasso selection marquee box */}
         {isLassoing && lassoStart && lassoEnd && (
           <div 
-            className="absolute border border-blue-500/50 bg-blue-500/10 pointer-events-none z-50 rounded-md shadow-[0_0_15px_rgba(59,130,246,0.15)]"
+            className="absolute border pointer-events-none z-50 rounded-md"
             style={{
               left: Math.min(lassoStart.x, lassoEnd.x),
               top: Math.min(lassoStart.y, lassoEnd.y),
               width: Math.abs(lassoStart.x - lassoEnd.x),
-              height: Math.abs(lassoStart.y - lassoEnd.y)
+              height: Math.abs(lassoStart.y - lassoEnd.y),
+              borderColor: currentAccentColor + '80',
+              backgroundColor: currentAccentColor + '1a',
+              boxShadow: `0 0 15px ${currentAccentColor}26`
             }}
           />
         )}
@@ -1304,10 +1318,10 @@ const GraphView = () => {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] bg-[#09090c]/95 border border-white/15 backdrop-blur-xl px-4 py-2.5 rounded-2xl flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] bg-[var(--color-card)]/95 border border-[var(--color-border)] backdrop-blur-xl px-4 py-2.5 rounded-2xl flex items-center gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.6)]"
           >
             <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentAccentColor }} />
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">
                 {selectedLassoNodes.size} Nodes Selected
               </span>
@@ -1320,7 +1334,7 @@ const GraphView = () => {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-white/10 text-white text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
                 title="Link all selected nodes sequentially"
               >
-                <Link2 className="w-3.5 h-3.5 text-blue-400" />
+                <Link2 className="w-3.5 h-3.5" style={{ color: currentAccentColor }} />
                 <span>Link Cluster</span>
               </button>
               
@@ -1372,7 +1386,7 @@ const GraphView = () => {
         <div className="w-1 h-1 rounded-full bg-white/10" />
         <div className="flex items-center gap-1.5">
           <kbd className="px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/10 text-white font-mono text-[8px]">Shift + Drag</kbd>
-          <span className="text-blue-400 font-bold">Select Multiple</span>
+          <span className="font-bold" style={{ color: currentAccentColor }}>Select Multiple</span>
         </div>
       </div>
 
@@ -1389,11 +1403,14 @@ const GraphView = () => {
                 return next;
               });
             }}
-            className={`p-1.5 rounded-lg transition-all shadow-md font-bold flex items-center justify-center shrink-0 border border-white/5 cursor-pointer active:scale-95 ${
+            className={`p-1.5 rounded-lg transition-all shadow-md font-bold flex items-center justify-center shrink-0 border cursor-pointer active:scale-95 ${
               isPlaying 
-                ? 'bg-blue-600 text-white hover:bg-blue-500' 
-                : 'bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08]'
+                ? 'text-white border-transparent' 
+                : 'bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] border-white/5'
             }`}
+            style={isPlaying ? {
+              backgroundColor: currentAccentColor,
+            } : {}}
             title={isPlaying ? "Pause Playback" : "Play Evolution"}
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -1545,7 +1562,7 @@ const GraphView = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2 }}
-              className="w-full max-w-md bg-[#0a0a0d]/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-6 relative text-center"
+              className="w-full max-w-md bg-[var(--color-card)]/95 border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xl p-6 relative text-center"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">

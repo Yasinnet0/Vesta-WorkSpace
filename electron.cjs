@@ -52,12 +52,24 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      devTools: false,
     },
     backgroundColor: '#000000',
     show: false
   });
 
   mainWindow.setMenuBarVisibility(false); // Remove File, Edit, etc.
+
+  // Block DevTools opening shortcuts completely
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.key === 'F12' ||
+      (input.control && input.shift && input.key.toLowerCase() === 'i') ||
+      (input.meta && input.alt && input.key.toLowerCase() === 'i')
+    ) {
+      event.preventDefault();
+    }
+  });
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');

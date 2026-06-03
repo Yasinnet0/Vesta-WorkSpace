@@ -109,7 +109,7 @@ const CustomCombobox = ({ value, options, onChange, placeholder, icon: Icon }) =
     <div ref={containerRef} className="relative w-full select-none">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-8.5 flex items-center justify-between bg-[#070911]/90 border border-white/10 hover:border-white/20 rounded-xl px-3 text-[10px] font-bold text-slate-300 hover:text-white focus:outline-none transition-all duration-150 cursor-pointer active:scale-98"
+        className="w-full h-8.5 flex items-center justify-between bg-[var(--color-background)]/90 border border-white/10 hover:border-white/20 rounded-xl px-3 text-[10px] font-bold text-slate-300 hover:text-white focus:outline-none transition-all duration-150 cursor-pointer active:scale-98"
       >
         <div className="flex items-center gap-2 min-w-0">
           {Icon && <Icon className="w-3.5 h-3.5 shrink-0 text-slate-400" />}
@@ -119,15 +119,18 @@ const CustomCombobox = ({ value, options, onChange, placeholder, icon: Icon }) =
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 mt-1.5 z-50 bg-[#0d101c]/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1.5 max-h-48 overflow-visible border-t-[1.5px] border-t-white/20">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#05060b] border border-white/5 rounded-lg px-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/30"
-            autoFocus
-          />
+        <div className="absolute left-0 right-0 mt-1.5 z-50 bg-[var(--color-card)]/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1.5 max-h-48 overflow-visible border-t-[1.5px] border-t-white/20">
+          <div className="relative">
+            <Search className="absolute left-2 top-1.5 w-3 h-3 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-[var(--color-background)]/65 border border-white/5 rounded-lg pl-7 pr-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/30"
+              autoFocus
+            />
+          </div>
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-0.5 max-h-36">
             <div
               onClick={() => { onChange(''); setIsOpen(false); setSearch(''); }}
@@ -529,6 +532,14 @@ const STARTER_TEMPLATES = [
 ];
 
 const Charts = () => {
+  const activeTheme = localStorage.getItem('vesta-theme') || 'carbon';
+  const themeBackgrounds = {
+    carbon: '#0c0e17',
+    plasma: '#080612',
+    matrix: '#040706'
+  };
+  const currentBgColor = themeBackgrounds[activeTheme] || '#0c0e17';
+
   // Saved Diagrams state
   const [charts, setCharts] = useState(() => {
     try {
@@ -811,7 +822,7 @@ const Charts = () => {
       svgClone.setAttribute('viewBox', `${minX} ${minY} ${width} ${height}`);
       svgClone.setAttribute('width', width);
       svgClone.setAttribute('height', height);
-      svgClone.setAttribute('style', 'background-color: #07080d; font-family: sans-serif;');
+      svgClone.setAttribute('style', `background-color: ${currentBgColor}; font-family: sans-serif;`);
 
       // Custom lightweight styles for SVG
       const cssStyles = `
@@ -977,7 +988,7 @@ const Charts = () => {
         ctx.translate(-minX, -minY);
 
         // Draw solid dark background
-        ctx.fillStyle = '#07080d';
+        ctx.fillStyle = currentBgColor;
         ctx.fillRect(minX, minY, width, height);
 
         const getAccent = (category) => {
@@ -1876,7 +1887,8 @@ const Charts = () => {
       icon: Sliders
     };
 
-    const strokeColor = isSelected ? '#a855f7' : (node.style?.stroke || cat.accent);
+    const currentAccent = activeTheme === 'plasma' ? '#a855f7' : activeTheme === 'matrix' ? '#10b981' : '#3b82f6';
+    const strokeColor = isSelected ? currentAccent : (node.style?.stroke || cat.accent);
     const fillColor = 'rgba(11, 13, 23, 0.82)';
 
     const cardStyle = {
@@ -1955,7 +1967,7 @@ const Charts = () => {
   };
 
   return (
-    <div className="-mt-[1.75rem] -mr-[2.5rem] -mb-[1.75rem] -ml-[2.5rem] w-[calc(100%+5rem)] h-[calc(100%+3.5rem)] relative overflow-hidden bg-[#07080d] text-slate-100 premium-page-entrance select-none">
+    <div className="-mt-[1.75rem] -mr-[2.5rem] -mb-[1.75rem] -ml-[2.5rem] w-[calc(100%+5rem)] h-[calc(100%+3.5rem)] relative overflow-hidden bg-[var(--color-background)] text-slate-100 premium-page-entrance select-none">
       
       {/* Panning Grid & Node Canvas area */}
       <div 
@@ -2033,7 +2045,7 @@ const Charts = () => {
                   <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#94a3b8" />
                 </marker>
                 <marker id="arrow-selected" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#a855f7" />
+                  <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill={activeTheme === 'plasma' ? '#a855f7' : activeTheme === 'matrix' ? '#10b981' : '#3b82f6'} />
                 </marker>
               </defs>
 
@@ -2119,11 +2131,12 @@ const Charts = () => {
 
                 const d = `M ${startPt.x} ${startPt.y} Q ${ctrlX} ${ctrlY} ${endPt.x} ${endPt.y}`;
 
+                const currentAccent = activeTheme === 'plasma' ? '#a855f7' : activeTheme === 'matrix' ? '#10b981' : '#3b82f6';
                 const strokeStyle = {
-                  stroke: isEdgeSelected ? '#a855f7' : 'rgba(255, 255, 255, 0.22)',
+                  stroke: isEdgeSelected ? currentAccent : 'rgba(255, 255, 255, 0.22)',
                   strokeWidth: link.type === 'thick' ? '4.5px' : '1.5px',
                   strokeDasharray: link.type === 'dashed' ? '5 5' : 'none',
-                  filter: isEdgeSelected ? 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.55))' : 'none',
+                  filter: isEdgeSelected ? `drop-shadow(0 0 8px ${currentAccent}8c)` : 'none',
                 };
 
                 return (
@@ -2267,7 +2280,7 @@ const Charts = () => {
                 className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
                   multiConnect 
                     ? 'border-emerald-500 bg-emerald-500/25 text-emerald-400 font-bold shadow-[0_0_8px_rgba(16,185,129,0.25)]' 
-                    : 'border-white/15 hover:border-white/30 bg-[#070911]'
+                    : 'border-white/15 hover:border-white/30 bg-[var(--color-background)]'
                 }`}
               >
                 {multiConnect && <Check className="w-2.5 h-2.5 text-emerald-400 font-bold" />}
@@ -2282,9 +2295,9 @@ const Charts = () => {
       </AnimatePresence>
 
       {/* Top Floating Dashboard Header (Placed right below title bar) */}
-      <header className="absolute left-1/2 -translate-x-1/2 top-3 z-20 h-11 px-4 bg-[#0d101d]/90 border border-white/10 backdrop-blur-xl rounded-2xl flex items-center gap-4 shadow-2xl pointer-events-auto">
+      <header className="absolute left-1/2 -translate-x-1/2 top-3 z-20 h-11 px-4 bg-[var(--color-card)] backdrop-blur-xl rounded-2xl flex items-center gap-4 shadow-2xl pointer-events-auto">
         <div className="flex items-center gap-2">
-          <Workflow className="w-4 h-4 text-blue-400 animate-pulse" />
+          <Workflow className="w-4 h-4 text-[var(--color-accent-blue-bright)] animate-pulse" />
           {isEditingName ? (
             <div className="flex items-center gap-1">
               <input 
@@ -2329,7 +2342,7 @@ const Charts = () => {
       </header>
 
       {/* Floating Canvas Controls (Top-Right, aligned right below title bar) */}
-      <div className="absolute top-3 right-4 z-20 flex items-center gap-2 bg-[#0d101d]/90 border border-white/10 backdrop-blur-xl px-3 py-1 rounded-full text-slate-300 shadow-xl pointer-events-auto">
+      <div className="absolute top-3 right-4 z-20 flex items-center gap-2 bg-[var(--color-card)] backdrop-blur-xl px-3 py-1 rounded-full text-slate-300 shadow-xl pointer-events-auto">
         <button onClick={() => setCanvasZoom(z => Math.max(0.25, z - 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomOut className="w-3.5 h-3.5" /></button>
         <span onClick={() => { setCanvasZoom(1); setPanOffset({x:0,y:0}); }} className="text-[9px] font-mono font-bold w-10 text-center cursor-pointer hover:text-white">{Math.round(canvasZoom * 100)}%</span>
         <button onClick={() => setCanvasZoom(z => Math.min(4, z + 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomIn className="w-3.5 h-3.5" /></button>
@@ -2349,7 +2362,7 @@ const Charts = () => {
           </button>
           
           {exportOpen && (
-            <div className="absolute right-0 top-7 w-28 bg-[#0d101c]/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1 z-50">
+            <div className="absolute right-0 top-7 w-28 bg-[var(--color-card)] border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1 z-50">
               <button 
                 onClick={() => { handleExport('svg'); setExportOpen(false); }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
@@ -2382,7 +2395,7 @@ const Charts = () => {
             exit={{ opacity: 0, x: -200 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
             style={{ top: '3rem' }}
-            className="absolute left-4 bottom-4 w-72 z-10 bg-[#0c0e17]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col gap-4 backdrop-blur-xl shadow-2xl pointer-events-auto"
+            className="absolute left-4 bottom-4 w-72 z-10 bg-[var(--color-background)]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col gap-4 backdrop-blur-xl shadow-2xl pointer-events-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
@@ -2485,7 +2498,7 @@ const Charts = () => {
             exit={{ opacity: 0, x: 200 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
             style={{ top: '3rem' }}
-            className="absolute right-4 bottom-4 w-88 z-10 bg-[#0c0e17]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col backdrop-blur-xl shadow-2xl pointer-events-auto"
+            className="absolute right-4 bottom-4 w-88 z-10 bg-[var(--color-background)]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col backdrop-blur-xl shadow-2xl pointer-events-auto"
           >
             {/* Tab select header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5 shrink-0">
@@ -2565,7 +2578,7 @@ const Charts = () => {
                                 e.target.value = '';
                               }
                             }}
-                            className="flex-1 bg-[#090b10] border border-white/10 rounded-xl px-2.5 py-1.5 text-xxs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-slate-600" 
+                            className="flex-1 bg-[var(--color-background)]/60 border border-white/10 rounded-xl px-2.5 py-1.5 text-xxs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-slate-600" 
                           />
                         </div>
                         {selectedNode.subNodes && selectedNode.subNodes.length > 0 && (
@@ -2580,7 +2593,7 @@ const Charts = () => {
                                       className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                                         sub.completed 
                                           ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold' 
-                                          : 'border-white/10 hover:border-white/30 bg-[#070911]'
+                                          : 'border-white/10 hover:border-white/30 bg-[var(--color-background)]/85'
                                       }`}
                                     >
                                       {sub.completed && <Check className="w-2.5 h-2.5 text-emerald-400 font-bold" />}
@@ -2705,7 +2718,7 @@ const Charts = () => {
                           /* Interactive category linking selector */
                           <div className="space-y-2">
                             {/* Pill Type Selector */}
-                            <div className="flex bg-[#05070c] border border-white/5 p-1 rounded-xl gap-1">
+                            <div className="flex bg-[var(--color-background)]/90 border border-white/5 p-1 rounded-xl gap-1">
                               {[
                                 { type: 'note', label: 'Note', icon: FileText, color: 'text-blue-400', activeBg: 'bg-blue-600/15 text-blue-400 border border-blue-500/10' },
                                 { type: 'task', label: 'Task', icon: Check, color: 'text-emerald-400', activeBg: 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/10' },
@@ -2971,7 +2984,7 @@ const Charts = () => {
                       <span>Copy Code</span>
                     </button>
                   </div>
-                  <div className="flex-1 min-h-[300px] rounded-2xl border border-white/10 bg-[#06080e]/60 p-3 shadow-inner">
+                  <div className="flex-1 min-h-[300px] rounded-2xl border border-white/10 bg-[var(--color-background)]/60 p-3 shadow-inner">
                     <textarea 
                       value={chartCode} 
                       onChange={e => applyCodeChange(e.target.value)}
@@ -2995,7 +3008,7 @@ const Charts = () => {
         <button 
           onClick={() => setLeftOpen(true)} 
           style={{ top: '12px' }} 
-          className="absolute left-4 z-20 p-2.5 rounded-xl bg-[#0d101d]/90 border border-white/10 hover:border-blue-500/50 backdrop-blur-xl text-slate-200 hover:text-white shadow-2xl cursor-pointer active:scale-95 flex items-center gap-1.5 pointer-events-auto"
+          className="absolute left-4 z-20 p-2.5 rounded-xl bg-[var(--color-card)] border border-white/10 hover:border-blue-500/50 backdrop-blur-xl text-slate-200 hover:text-white shadow-2xl cursor-pointer active:scale-95 flex items-center gap-1.5 pointer-events-auto"
         >
           <PenTool className="w-4 h-4 text-blue-400" />
           <span className="text-[8.5px] font-black uppercase tracking-wider">Palette</span>
@@ -3016,7 +3029,7 @@ const Charts = () => {
               initial={{ scale: 0.95, y: 15 }} 
               animate={{ scale: 1, y: 0 }} 
               exit={{ scale: 0.95, y: 15 }}
-              className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0d101c] shadow-2xl text-slate-200 border-t-[1.5px] border-t-blue-500/40"
+              className="w-full max-w-sm rounded-2xl border border-white/10 bg-[var(--color-card)] shadow-2xl text-slate-200 border-t-[1.5px] border-t-blue-500/40"
               onClick={e => e.stopPropagation()}
             >
               <div className="p-5.5">

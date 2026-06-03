@@ -145,7 +145,7 @@ const CategoryCombobox = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute z-[60] left-0 right-0 mt-2 max-h-52 overflow-y-auto bg-[#0a0a0d]/95 border border-white/10 backdrop-blur-xl rounded-xl shadow-2xl no-scrollbar divide-y divide-white/5"
+            className="absolute z-[60] left-0 right-0 mt-2 max-h-52 overflow-y-auto bg-[var(--color-card)]/95 border border-[var(--color-border)] backdrop-blur-xl rounded-xl shadow-2xl no-scrollbar divide-y divide-white/5"
           >
             {/* Suggestions List */}
             {filteredSuggestions.length > 0 ? (

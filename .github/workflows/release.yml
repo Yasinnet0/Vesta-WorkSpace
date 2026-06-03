@@ -10,8 +10,12 @@ permissions:
   contents: write # REQUIRED: Allows the bot to create releases and upload files
 
 jobs:
-  build:
-    runs-on: windows-latest
+  release:
+    name: Build & Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -28,8 +32,7 @@ jobs:
       - name: Compile Frontend Assets
         run: npm run build
 
-      - name: Package and Publish Desktop Installer
-        run: npx electron-builder --win --publish always
+      - name: Package and Publish App
+        run: npx electron-builder --publish always
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # If you use code signing in the future, you add your certificates here

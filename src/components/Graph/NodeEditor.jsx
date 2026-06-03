@@ -398,7 +398,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-      className="absolute top-0 right-0 z-50 h-full w-[400px] border-l border-white/10 bg-[#07070a]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
+      className="absolute top-0 right-0 z-50 h-full w-[400px] border-l border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
     >
       {/* Upper Section */}
       <div className="space-y-6">
@@ -433,7 +433,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
 
         {/* Linked Entity Info Box */}
         {entityType !== 'custom' && linkedEntity && (
-          <div className={`p-4 rounded-xl border border-white/5 bg-[#0a0a0d] space-y-2`}>
+          <div className={`p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)]/50 space-y-2`}>
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Linked Entity Details</span>
               <button 
@@ -542,7 +542,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
 
               {/* Target search dropdown */}
               {isDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-[#0a0a0d] border border-white/10 rounded-xl shadow-2xl p-2.5 z-[60] space-y-2">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl shadow-2xl p-2.5 z-[60] space-y-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                     <input
@@ -637,7 +637,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2 }}
-              className="w-full max-w-md bg-[#0a0a0d]/95 border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-6 relative text-center"
+              className="w-full max-w-md bg-[var(--color-card)]/95 border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-2xl p-6 relative text-center"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-12 h-12 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">

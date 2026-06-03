@@ -1,7 +1,7 @@
 {
   "name": "vesta",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Vesta",
   "author": "Vesta Dev",
   "type": "module",
@@ -32,7 +32,26 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/logo.ico"
+      "icon": "public/logo.ico",
+      "artifactName": "${productName} Setup Windows ${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "${productName} Setup macOS ${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "artifactName": "${productName} Setup Linux ${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,

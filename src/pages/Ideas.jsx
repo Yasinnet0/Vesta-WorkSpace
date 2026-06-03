@@ -12,7 +12,7 @@ const Ideas = () => {
       addItem={addIdea}
       updateItem={updateIdea}
       categoryKey="ideas"
-      accentColor="amber"
+      accentColor="blue"
       label="Inspiration"
     />
   );

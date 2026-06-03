@@ -2,13 +2,20 @@ import React from 'react';
 import { ExternalLink, Trash2, Pin, ArrowUpRight, Globe } from 'lucide-react';
 
 const BookmarkCard = ({ bookmark, onDelete, onPin, onClick, isSelected }) => {
+  const getCategoryColor = () => {
+    return 'text-accent-blue-bright bg-accent-blue/10 border-accent-blue/20';
+  };
+
   return (
     <div 
       onClick={onClick}
-      className={`minimal-card group p-4 flex flex-col h-full bg-[var(--color-card)] border-[var(--color-border)] cursor-pointer transition-all duration-300 ${
-        isSelected ? 'border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.15)]' : ''
+      className={`group relative flex flex-col justify-between border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md select-none p-5 rounded-2xl min-h-[145px] h-full ${
+        isSelected 
+          ? 'bg-gradient-to-br from-[#161d36]/60 to-[#0c0e17]/80 border-accent-blue/40 shadow-[0_15px_30px_rgba(0,0,0,0.65),inset_0_0_12px_rgba(96,165,250,0.06)] scale-[1.01]' 
+          : 'bg-gradient-to-br from-[#14172a]/25 to-[#0b0c14]/40 border-white/[0.03] hover:border-accent-blue/25 hover:bg-gradient-to-br hover:from-[#181d36]/35 hover:to-[#0f111f]/50 hover:translate-y-[-2px] hover:shadow-[0_15px_30px_rgba(0,0,0,0.55),0_0_20px_rgba(96,165,250,0.02)]'
       }`}
     >
+      <div className="group-hover-shine" />
       <div className="flex items-start justify-between mb-4">
         <div className="w-8 h-8 rounded-lg bg-white/[0.03] border border-border flex items-center justify-center p-1.5 group-hover:border-accent-blue/30 transition-all duration-300">
           <img 
@@ -39,10 +46,10 @@ const BookmarkCard = ({ bookmark, onDelete, onPin, onClick, isSelected }) => {
         </button>
       </div>
 
-      <div className="space-y-1 mb-3">
-        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
-          {bookmark.category || 'Uncategorized'}
-        </span>
+      <div className="space-y-2 mb-3">
+        <div className={`text-[8px] font-mono tracking-widest font-bold uppercase px-2 py-0.5 rounded border flex items-center gap-1 w-fit transition-all duration-200 ${getCategoryColor(bookmark.category)}`}>
+          <span>{bookmark.category || 'General'}</span>
+        </div>
         <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent-blue transition-colors">
           {bookmark.title}
         </h3>
