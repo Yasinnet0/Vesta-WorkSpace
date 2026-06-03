@@ -1,6 +1,11 @@
 {
   "name": "vesta",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yasinnet0/Vesta-WorkSpace.git"
+  },
+  "homepage": "https://github.com/Yasinnet0/Vesta-WorkSpace#readme",
   "version": "1.0.2",
   "description": "Vesta",
   "author": "Vesta Dev",
