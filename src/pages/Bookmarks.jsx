@@ -325,7 +325,17 @@ const Bookmarks = () => {
 
   const selectedBookmark = bookmarks.find(b => b.id === selectedItemId);
 
+  const prevSelectedItemIdRef = useRef(selectedItemId);
+
   useEffect(() => {
+    if (prevSelectedItemIdRef.current !== selectedItemId) {
+      setEditingTitle(false);
+      setEditingUrl(false);
+      setEditingDescription(false);
+      setEditingCategoryName(false);
+      prevSelectedItemIdRef.current = selectedItemId;
+    }
+
     if (selectedBookmark) {
       setLastSelectedBookmark(selectedBookmark);
       setEditTitleText(selectedBookmark.title || '');
@@ -661,6 +671,17 @@ const Bookmarks = () => {
                           type="text"
                           value={editTitleText}
                           onChange={(e) => setEditTitleText(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              await handleUpdateField(displayBookmark.id, 'title', editTitleText);
+                              setEditingTitle(false);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setEditingTitle(false);
+                              setEditTitleText(displayBookmark.title || '');
+                            }
+                          }}
                           className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-2 text-xs font-semibold text-white outline-none focus:border-blue-500/60 transition-colors"
                         />
                         <div className="flex gap-2 justify-end">
@@ -705,6 +726,17 @@ const Bookmarks = () => {
                           type="url"
                           value={editUrlText}
                           onChange={(e) => setEditUrlText(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              await handleUpdateField(displayBookmark.id, 'url', editUrlText);
+                              setEditingUrl(false);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setEditingUrl(false);
+                              setEditUrlText(displayBookmark.url || '');
+                            }
+                          }}
                           className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-2 text-xs font-medium text-white outline-none focus:border-blue-500/60 transition-colors"
                         />
                         <div className="flex gap-2 justify-end">
@@ -748,6 +780,17 @@ const Bookmarks = () => {
                         <textarea
                           value={editDescriptionText}
                           onChange={(e) => setEditDescriptionText(e.target.value)}
+                          onKeyDown={async (e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                              e.preventDefault();
+                              await handleUpdateField(displayBookmark.id, 'description', editDescriptionText);
+                              setEditingDescription(false);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setEditingDescription(false);
+                              setEditDescriptionText(displayBookmark.description || '');
+                            }
+                          }}
                           rows={4}
                           className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-2.5 text-xs font-medium text-white outline-none resize-none focus:border-blue-500/60 transition-colors leading-relaxed"
                         />
@@ -912,62 +955,65 @@ const Bookmarks = () => {
       )}
 
       {/* Custom Confirmation Modal */}
-      <AnimatePresence>
-        {confirmModal.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/80 space-y-6 z-10"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
-                  <Trash2 size={20} />
+      {createPortal(
+        <AnimatePresence>
+          {confirmModal.isOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/95 backdrop-blur-xl p-6 shadow-2xl shadow-black/80 space-y-6 z-10"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                    <Trash2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
+                      {confirmModal.title}
+                    </h3>
+                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mt-0.5">Critical Action</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-                    {confirmModal.title}
-                  </h3>
-                  <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mt-0.5">Critical Action</p>
+
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {confirmModal.message}
+                </p>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    className="px-4 py-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 hover:text-white border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirmModal.onConfirm) {
+                        await confirmModal.onConfirm();
+                      }
+                      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/10 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                  >
+                    Confirm Delete
+                  </button>
                 </div>
-              </div>
-
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {confirmModal.message}
-              </p>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] text-slate-400 hover:text-white border border-white/5 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (confirmModal.onConfirm) {
-                      await confirmModal.onConfirm();
-                    }
-                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/10 transition-all text-[10px] font-black uppercase tracking-wider cursor-pointer"
-                >
-                  Confirm Delete
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

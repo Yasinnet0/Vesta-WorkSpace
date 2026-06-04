@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getTasks, addTask, updateTask, deleteTask } from '../api';
 import TaskItem from '../components/Tasks/TaskItem';
@@ -15,9 +15,7 @@ import {
   Flag,
   Edit3,
   RotateCcw,
-  ArrowRight,
   FileText,
-  Zap,
   Folder,
   FolderOpen,
   LayoutGrid,
@@ -220,7 +218,7 @@ const Tasks = () => {
     }
   };
 
-  const handleClearCompleted = async () => {
+  const handleClearCompleted = useCallback(async () => {
     const completedList = tasks.filter(t => t.completed);
     try {
       for (const t of completedList) {
@@ -231,7 +229,7 @@ const Tasks = () => {
     } catch (err) {
       console.error("Failed to clear completed tasks", err);
     }
-  };
+  }, [tasks]);
 
   const handleToggle = async (id) => {
     const task = tasks.find(t => t.id === id);
@@ -396,7 +394,9 @@ const Tasks = () => {
   // Focus targets
   const focusedTask = tasks.find(t => t.id === selectedTaskId) || activeTasks[0] || tasks[0] || null;
 
-  useEffect(() => {
+  const [prevFocusedTaskId, setPrevFocusedTaskId] = useState(focusedTask?.id);
+  if (focusedTask?.id !== prevFocusedTaskId) {
+    setPrevFocusedTaskId(focusedTask?.id);
     setEditingName(false);
     setEditingNotes(false);
     setShowDeleteConfirm(false);
@@ -405,7 +405,42 @@ const Tasks = () => {
       setEditNotes(focusedTask.notes || '');
       setEditCategory(focusedTask.list || '');
     }
-  }, [focusedTask?.id]);
+  }
+
+  const { isOpen, onConfirm } = confirmModal;
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = async (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        if (onConfirm) {
+          await onConfirm();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onConfirm]);
+
+  useEffect(() => {
+    if (!showClearConfirm) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowClearConfirm(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowClearConfirm(false);
+        handleClearCompleted();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showClearConfirm, handleClearCompleted]);
 
   useEffect(() => {
     if (editingName && nameInputRef.current) {
@@ -1197,7 +1232,13 @@ const Tasks = () => {
                             value={editNotes}
                             onChange={(e) => setEditNotes(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Escape') { setEditingNotes(false); setEditNotes(focusedTask.notes || ''); }
+                              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                handleSaveNotes();
+                              } else if (e.key === 'Escape') {
+                                setEditingNotes(false);
+                                setEditNotes(focusedTask.notes || '');
+                              }
                             }}
                             rows={6}
                             placeholder="WRITE LOG DATA AND CONTEXT INSTRUCTIONS..."
@@ -1276,92 +1317,98 @@ const Tasks = () => {
       </div>
 
       {/* Confirmation Modal - Clear Completed */}
-      <AnimatePresence>
-        {showClearConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="w-full max-w-sm bg-[#0a0a0d] border border-white/5 rounded-xl p-5 text-center shadow-2xl select-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xs font-mono font-black uppercase tracking-widest text-white mb-2">
-                Purge Completed Tasks?
-              </h3>
-              
-              <p className="text-[11px] font-medium tracking-wide uppercase text-slate-550 leading-relaxed mb-5">
-                Are you sure you want to permanently clear all completed tasks from storage? This operation is final.
-              </p>
-              
-              <div className="flex items-center gap-3 justify-center text-[9.5px] font-mono font-bold tracking-widest uppercase">
-                <button
-                  onClick={() => setShowClearConfirm(false)}
-                  className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer focus:outline-none"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleClearCompleted}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
-                >
-                  Confirm Purge
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {showClearConfirm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="w-full max-w-sm bg-[#0a0a0d] border border-white/5 rounded-xl p-5 text-center shadow-2xl select-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xs font-mono font-black uppercase tracking-widest text-white mb-2">
+                  Purge Completed Tasks?
+                </h3>
+                
+                <p className="text-[11px] font-medium tracking-wide uppercase text-slate-550 leading-relaxed mb-5">
+                  Are you sure you want to permanently clear all completed tasks from storage? This operation is final.
+                </p>
+                
+                <div className="flex items-center gap-3 justify-center text-[9.5px] font-mono font-bold tracking-widest uppercase">
+                  <button
+                    onClick={() => setShowClearConfirm(false)}
+                    className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleClearCompleted}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
+                  >
+                    Confirm Purge
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Confirmation Modal - Custom Categories */}
-      <AnimatePresence>
-        {confirmModal.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-              className="absolute inset-0 bg-black/70 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-sm overflow-hidden rounded-xl border border-white/5 bg-[#0c0e17] p-5 shadow-2xl z-10 text-center select-none"
-            >
-              <h3 className="text-xs font-mono font-black uppercase tracking-widest text-slate-200 mb-2">
-                {confirmModal.title}
-              </h3>
+      {createPortal(
+        <AnimatePresence>
+          {confirmModal.isOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                className="relative w-full max-w-sm overflow-hidden rounded-xl border border-white/5 bg-[#0c0e17] p-5 shadow-2xl z-10 text-center select-none"
+              >
+                <h3 className="text-xs font-mono font-black uppercase tracking-widest text-slate-200 mb-2">
+                  {confirmModal.title}
+                </h3>
 
-              <p className="text-[11px] font-medium tracking-wide uppercase text-slate-550 leading-relaxed mb-5">
-                {confirmModal.message}
-              </p>
+                <p className="text-[11px] font-medium tracking-wide uppercase text-slate-555 leading-relaxed mb-5">
+                  {confirmModal.message}
+                </p>
 
-              <div className="flex items-center justify-center gap-3 text-[9.5px] font-mono font-bold tracking-widest uppercase">
-                <button
-                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-455 hover:text-white transition-colors cursor-pointer focus:outline-none"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    if (confirmModal.onConfirm) {
-                      await confirmModal.onConfirm();
-                    }
-                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                  }}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
-                >
-                  Confirm Action
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="flex items-center justify-center gap-3 text-[9.5px] font-mono font-bold tracking-widest uppercase">
+                  <button
+                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                    className="px-4 py-2 rounded border border-white/5 hover:border-white/10 text-slate-455 hover:text-white transition-colors cursor-pointer focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirmModal.onConfirm) {
+                        await confirmModal.onConfirm();
+                      }
+                      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded transition-all cursor-pointer focus:outline-none"
+                  >
+                    Confirm Action
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Undo Toast notification banner */}
       {createPortal(

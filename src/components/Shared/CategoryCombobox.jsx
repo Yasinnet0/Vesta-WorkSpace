@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Check, Tag, Plus, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Check, Tag, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CategoryCombobox = ({
@@ -49,6 +49,22 @@ const CategoryCombobox = ({
     setSearchQuery(val);
     onChange(val);
     if (!isOpen) setIsOpen(true);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (searchQuery && searchQuery.trim() !== '') {
+        handleSelectOption(searchQuery.trim());
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsOpen(false);
+      setSearchQuery(value);
+      e.target.blur();
+    }
   };
 
   // Determine active border / text styles based on accent color
@@ -105,6 +121,7 @@ const CategoryCombobox = ({
           type="text"
           value={searchQuery}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={
             isMinimal
