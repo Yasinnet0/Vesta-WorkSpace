@@ -1,8 +1,21 @@
 # <img src="public/logo.ico" width="40" height="40" align="center" style="margin-right: 10px;" /> Vesta
 
+[![Electron](https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+
 **Vesta** is a local-first, private desktop workspace that unifies your notes, ideas, bookmarks, tasks, and visual charts into a single interactive intelligence hub. 
 
 Rather than jumping between separate apps for notes, todo lists, bookmarks, and mindmaps, Vesta brings them together in a clean, unified dashboard, allowing you to link your local databases directly to visual nodes on a zoomable, infinite canvas.
+
+---
+
+## 🎨 Features Overview
+
+![Vesta Workspace Showcase](https://repository-images.githubusercontent.com/1256480717/dea44532-1295-439b-84c7-cf24a750d841)
 
 ---
 
