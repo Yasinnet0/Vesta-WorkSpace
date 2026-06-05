@@ -80,7 +80,7 @@ const Sidebar = () => {
   return (
     <aside 
       style={{ width: `${currentWidth}px` }}
-      className={`relative border-r border-border flex flex-col h-full bg-[#050506] overflow-hidden shrink-0 ${isResizing ? '' : 'transition-all duration-300'}`}
+      className={`relative border-r border-[var(--color-border)] flex flex-col h-full bg-gradient-to-b from-[var(--color-background)] to-[var(--color-card-to)]/95 overflow-hidden shrink-0 ${isResizing ? '' : 'transition-all duration-300'}`}
     >
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
         {!isCollapsed && (

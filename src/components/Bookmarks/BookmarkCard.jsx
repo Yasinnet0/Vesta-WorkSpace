@@ -9,10 +9,10 @@ const BookmarkCard = ({ bookmark, onDelete, onPin, onClick, isSelected }) => {
   return (
     <div 
       onClick={onClick}
-      className={`group relative flex flex-col justify-between border transition-all duration-300 cursor-pointer overflow-hidden backdrop-blur-md select-none p-5 rounded-2xl min-h-[145px] h-full ${
+      className={`group relative flex flex-col justify-between border transition-all duration-350 cursor-pointer overflow-hidden backdrop-blur-md select-none p-5 rounded-2xl min-h-[145px] h-full ${
         isSelected 
-          ? 'bg-gradient-to-br from-[#161d36]/60 to-[#0c0e17]/80 border-accent-blue/40 shadow-[0_15px_30px_rgba(0,0,0,0.65),inset_0_0_12px_rgba(96,165,250,0.06)] scale-[1.01]' 
-          : 'bg-gradient-to-br from-[#14172a]/25 to-[#0b0c14]/40 border-white/[0.03] hover:border-accent-blue/25 hover:bg-gradient-to-br hover:from-[#181d36]/35 hover:to-[#0f111f]/50 hover:translate-y-[-2px] hover:shadow-[0_15px_30px_rgba(0,0,0,0.55),0_0_20px_rgba(96,165,250,0.02)]'
+          ? 'bg-gradient-to-br from-[var(--color-card-hover-from)] to-[var(--color-card-hover-to)] border-accent-blue/50 shadow-[0_15px_30px_rgba(0,0,0,0.55),inset_0_0_12px_color-mix(in srgb,var(--color-accent-blue)_8%,transparent)] scale-[1.01]' 
+          : 'bg-gradient-to-br from-[var(--color-card-from)] to-[var(--color-card-to)] border-[var(--color-border)] hover:border-accent-blue/35 hover:translate-y-[-2px] hover:shadow-[0_15px_30px_rgba(0,0,0,0.55),0_0_20px_color-mix(in srgb,var(--color-accent-blue)_4%,transparent)]'
       }`}
     >
       <div className="group-hover-shine" />

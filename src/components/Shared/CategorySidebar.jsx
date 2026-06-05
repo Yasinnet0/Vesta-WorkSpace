@@ -186,7 +186,7 @@ const CategorySidebar = ({
         key={cat} 
         className={`group/item flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold select-none cursor-pointer transition-all relative ${
           isActive 
-            ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-md shadow-blue-500/5' 
+            ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20 shadow-md shadow-[var(--color-accent-blue)]/5' 
             : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] border border-transparent'
         }`}
         onClick={() => setActiveCategory(cat)}
@@ -245,7 +245,7 @@ const CategorySidebar = ({
                   onClick={() => assignCategoryToFolder(cat, inThisFolder ? null : folder)}
                   className={`w-full text-left px-2 py-1.5 rounded-lg font-bold uppercase tracking-wider flex items-center justify-between ${
                     inThisFolder 
-                      ? 'bg-blue-600/10 text-blue-400 hover:bg-blue-600/20' 
+                      ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] hover:bg-[var(--color-accent-blue)]/20' 
                       : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                   }`}
                 >
@@ -282,7 +282,7 @@ const CategorySidebar = ({
       {/* Search & Management Header */}
       <div className="space-y-2 shrink-0">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Sectors</span>
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em]">Folders</span>
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setShowAddFolder(!showAddFolder)} 
@@ -341,7 +341,7 @@ const CategorySidebar = ({
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600" size={11} />
           <input 
             type="text" 
-            placeholder="FILTER..." 
+            placeholder="SEARCH..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-[var(--color-background)] border border-[var(--color-border)] focus:border-[var(--color-accent-blue-bright)]/50 rounded-lg pl-8 pr-3 py-1.5 outline-none text-[9px] font-black uppercase tracking-widest text-slate-300 placeholder:text-slate-600 transition-colors"
@@ -355,22 +355,21 @@ const CategorySidebar = ({
           <Sliders size={10} className="text-slate-600" />
           <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Smart Filters</span>
         </div>
-        <div className="space-y-0.5">
-          {/* ALL FILTER */}
+        <div className="space-y-0.5">          {/* ALL FILTER */}
           <div 
             onClick={() => setActiveCategory('All')}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               activeCategory === 'All'
-                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Inbox size={12} className={activeCategory === 'All' ? 'text-blue-400' : 'text-slate-500'} />
+              <Inbox size={12} className={activeCategory === 'All' ? 'text-[var(--color-accent-blue-bright)]' : 'text-slate-550'} />
               <span className="uppercase tracking-wider text-[10px] font-bold">All Units</span>
             </div>
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-              activeCategory === 'All' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.03] text-slate-500'
+              activeCategory === 'All' ? 'bg-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue-bright)]' : 'bg-white/[0.03] text-slate-500'
             }`}>{getItemCount('All')}</span>
           </div>
 
@@ -379,16 +378,16 @@ const CategorySidebar = ({
             onClick={() => setActiveCategory('Today')}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               activeCategory === 'Today'
-                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Clock size={12} className={activeCategory === 'Today' ? 'text-blue-400' : 'text-slate-500'} />
+              <Clock size={12} className={activeCategory === 'Today' ? 'text-[var(--color-accent-blue-bright)]' : 'text-slate-550'} />
               <span className="uppercase tracking-wider text-[10px] font-bold">Created Today</span>
             </div>
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-              activeCategory === 'Today' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.03] text-slate-500'
+              activeCategory === 'Today' ? 'bg-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue-bright)]' : 'bg-white/[0.03] text-slate-500'
             }`}>{getItemCount('Today')}</span>
           </div>
 
@@ -397,18 +396,18 @@ const CategorySidebar = ({
             onClick={() => setActiveCategory('Priority')}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               activeCategory === 'Priority'
-                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
             }`}
           >
             <div className="flex items-center gap-2">
-              <Flag size={12} className={activeCategory === 'Priority' ? 'text-blue-400' : 'text-slate-500'} />
+              <Flag size={12} className={activeCategory === 'Priority' ? 'text-[var(--color-accent-blue-bright)]' : 'text-slate-550'} />
               <span className="uppercase tracking-wider text-[10px] font-bold">
                 {categoryKey === 'tasks' ? 'High Focus' : categoryKey === 'bookmarks' ? 'Pinned Core' : 'Starred Ideas'}
               </span>
             </div>
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-              activeCategory === 'Priority' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.03] text-slate-500'
+              activeCategory === 'Priority' ? 'bg-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue-bright)]' : 'bg-white/[0.03] text-slate-500'
             }`}>{getItemCount('Priority')}</span>
           </div>
 
@@ -417,16 +416,16 @@ const CategorySidebar = ({
             onClick={() => setActiveCategory('Stale')}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
               activeCategory === 'Stale'
-                ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
+                ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.01]'
             }`}
           >
             <div className="flex items-center gap-2">
-              <FolderHeart size={12} className={activeCategory === 'Stale' ? 'text-blue-400' : 'text-slate-500'} />
+              <FolderHeart size={12} className={activeCategory === 'Stale' ? 'text-[var(--color-accent-blue-bright)]' : 'text-slate-550'} />
               <span className="uppercase tracking-wider text-[10px] font-bold">Stale (&gt;14d)</span>
             </div>
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-              activeCategory === 'Stale' ? 'bg-blue-500/20 text-blue-300' : 'bg-white/[0.03] text-slate-500'
+              activeCategory === 'Stale' ? 'bg-[var(--color-accent-blue)]/20 text-[var(--color-accent-blue-bright)]' : 'bg-white/[0.03] text-slate-500'
             }`}>{getItemCount('Stale')}</span>
           </div>
         </div>
@@ -495,7 +494,7 @@ const CategorySidebar = ({
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 px-1 py-1">
               <Tag size={10} className="text-slate-600" />
-              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Unsorted</span>
+              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Categories</span>
             </div>
             <div className="space-y-0.5">
               {unsortedCategories.map(cat => renderCategoryItem(cat))}

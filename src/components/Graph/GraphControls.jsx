@@ -40,13 +40,13 @@ const GraphControls = ({
       <div className="flex items-center gap-2.5 p-2 bg-[var(--color-card)]/90 backdrop-blur-md border border-[var(--color-border)] rounded-2xl shadow-2xl">
         {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
           <input 
             type="text" 
             placeholder="Search graph nodes..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-44 focus:w-60 bg-[var(--color-background)] hover:bg-[var(--color-background)]/85 focus:bg-[var(--color-background)] border border-[var(--color-border)] focus:border-[var(--color-accent-blue-bright)]/50 focus:ring-1 focus:ring-[var(--color-accent-blue)]/20 rounded-xl py-2 pl-9 pr-4 text-xs text-zinc-100 transition-all focus:outline-none placeholder:text-slate-600 font-sans"
+            className="search-input-premium w-44 focus:w-60 transition-all pl-10 py-2"
           />
         </div>
 
@@ -100,7 +100,7 @@ const GraphControls = ({
             className="w-72 bg-[var(--color-card)]/95 backdrop-blur-xl border border-[var(--color-border)] rounded-2xl shadow-2xl p-4 space-y-4 no-scrollbar"
           >
             <div>
-              <h4 className="text-xxs font-black text-slate-500 uppercase tracking-widest">Filter Node Sectors</h4>
+              <h4 className="text-xxs font-black text-slate-500 uppercase tracking-widest">Filter Node Types</h4>
               <p className="text-[10px] text-slate-600 mt-0.5">Toggle what categories are visible on canvas</p>
             </div>
 

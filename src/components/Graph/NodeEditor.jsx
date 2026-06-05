@@ -398,7 +398,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-      className="absolute top-0 right-0 z-50 h-full w-[400px] border-l border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
+      className="absolute top-[5rem] right-[3.5rem] h-[calc(100%-14rem)] w-[380px] z-50 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]/90 backdrop-blur-2xl p-6 flex flex-col justify-between shadow-2xl overflow-y-auto no-scrollbar"
     >
       {/* Upper Section */}
       <div className="space-y-6">
@@ -622,7 +622,7 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
         <button
           onClick={handleManualSave}
           disabled={loading}
-          className="bg-white/[0.03] border border-white/10 hover:border-white/20 text-white rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all"
+          className="secondary-btn text-[10px] font-bold uppercase tracking-wider cursor-pointer disabled:opacity-50"
         >
           Force Save
         </button>

@@ -440,7 +440,7 @@ const Bookmarks = () => {
       return (
         <>
           {parts[0]}
-          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
+          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-[var(--color-accent-blue)]/30 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
           {parts[1]}
         </>
       );
@@ -478,129 +478,129 @@ const Bookmarks = () => {
 
         {/* Center Column: Main Content Area */}
         <div className="flex-1 min-w-0 max-w-full mx-auto w-full px-6 space-y-6 transition-all duration-300">
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !isSidebarCollapsed;
-                    setIsSidebarCollapsed(next);
-                    localStorage.setItem('grid-sidebar-collapsed-bookmarks', String(next));
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer select-none mr-2 ${
-                    isSidebarCollapsed 
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
-                      : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-white'
-                  }`}
-                  title={isSidebarCollapsed ? "Expand Folders" : "Collapse Folders"}
-                >
-                  {isSidebarCollapsed ? (
-                    <>
-                      <Folder className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Folders</span>
-                    </>
-                  ) : (
-                    <>
-                      <FolderOpen className="w-3.5 h-3.5" />
-                      <span>Hide Sidebar</span>
-                    </>
-                  )}
-                </button>
-                Bookmarks
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
-                  {filteredBookmarks.length} nodes
-                </span>
-              </h2>
-            </div>
-
-            <div className="flex gap-2">
-                <div className="flex items-center px-3 py-1.5 gap-2 bg-[var(--color-background)] border border-[var(--color-border)] focus-within:border-[var(--color-accent-blue-bright)]/50 focus-within:ring-1 focus-within:ring-[var(--color-accent-blue)]/20 rounded-xl transition-all shadow-inner h-9">
-                    <Search size={14} className="text-slate-600" />
-                    <input 
-                        type="text" 
-                        placeholder="Search Bookmark..." 
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="bg-transparent border-none outline-none text-xs text-slate-300 placeholder:text-slate-500 w-32 font-medium"
-                    />
-                </div>
-                <button 
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="premium-btn flex items-center justify-center gap-2 h-9 text-xs px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all shadow-md shadow-blue-500/10 cursor-pointer border border-blue-500/30 font-bold uppercase tracking-wider py-0"
-                >
-                    <Plus size={14} className={`transition-transform duration-300 ${showAddForm ? 'rotate-45' : ''}`} />
-                    <span>{showAddForm ? 'Close' : 'Add Bookmark'}</span>
-                </button>
+          <header className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/[0.02] gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isSidebarCollapsed;
+                  setIsSidebarCollapsed(next);
+                  localStorage.setItem('grid-sidebar-collapsed-bookmarks', String(next));
+                }}
+                className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-all duration-300 active:scale-95 cursor-pointer ${
+                  !isSidebarCollapsed 
+                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' 
+                    : 'bg-white/[0.01] border-white/5 text-slate-400 hover:text-white'
+                }`}
+                title={isSidebarCollapsed ? "Expand Folders" : "Collapse Folders"}
+              >
+                {isSidebarCollapsed ? <Folder className="w-4 h-4 text-blue-400" /> : <FolderOpen className="w-4 h-4 text-slate-400" />}
+              </button>
+              
+              <div>
+                <span className="text-[10px] font-mono tracking-widest text-slate-555 uppercase block">Bookmarks Registry</span>
+                <h2 className="text-base font-extrabold text-white tracking-tight mt-0.5 uppercase flex items-center gap-2">
+                  {activeCategory === 'All' ? 'All Bookmarks' : `${activeCategory} Folder`}
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
+                    {filteredBookmarks.length} nodes
+                  </span>
+                </h2>
+              </div>
             </div>
           </header>
 
+          {/* Dedicated Filter/Search Input */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
+              <input 
+                type="text" 
+                placeholder="SEARCH BOOKMARKS DECK..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input-premium w-full pl-10 h-10"
+              />
+            </div>
+            <button 
+              type="button"
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="premium-btn flex items-center justify-center gap-2 h-10 text-[9.5px] px-5 font-black uppercase tracking-widest cursor-pointer active:scale-95 shrink-0"
+            >
+              <Plus size={12} className={`transition-transform duration-300 ${showAddForm ? 'rotate-45' : ''}`} />
+              <span>{showAddForm ? 'Close' : 'Add Bookmark'}</span>
+            </button>
+          </div>
+
           <AnimatePresence>
             {showAddForm && (
-              <motion.form 
-                initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-                animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
-                exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-                transition={{ duration: 0.25 }}
-                onSubmit={handleIndexBookmark}
-                className="overflow-hidden bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-blue-500/40 rounded-xl p-4 space-y-3 transition-all"
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+                className="overflow-hidden"
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Title</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Google DeepMind"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource URL</label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="https://deepmind.google"
-                      value={newUrl}
-                      onChange={(e) => setNewUrl(e.target.value)}
-                      className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Folder / Tag</label>
-                    <div className="text-slate-200">
-                      <CategoryCombobox
-                        value={newCategoryVal || (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory) ? '' : activeCategory)}
-                        onChange={(val) => setNewCategoryVal(val)}
-                        suggestions={categories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                        placeholder="Select or type folder..."
-                        accentColor="blue"
+                <form 
+                  onSubmit={handleIndexBookmark}
+                  className="bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-blue-500/40 rounded-xl p-4 space-y-3 transition-all mb-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Title</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Google DeepMind"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
                       />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource URL</label>
+                      <input
+                        type="url"
+                        required
+                        placeholder="https://deepmind.google"
+                        value={newUrl}
+                        onChange={(e) => setNewUrl(e.target.value)}
+                        className="bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-lg px-3 py-2 outline-none text-xs text-slate-200 placeholder:text-slate-500 focus:ring-0 w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Folder / Tag</label>
+                      <div className="text-slate-200">
+                        <CategoryCombobox
+                          value={newCategoryVal || (activeCategory === 'All' || ['Today', 'Priority', 'Stale'].includes(activeCategory) ? '' : activeCategory)}
+                          onChange={(val) => setNewCategoryVal(val)}
+                          suggestions={categories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
+                          placeholder="Select or type folder..."
+                          accentColor="blue"
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Description (Optional)</label>
-                  <div className="flex gap-3">
-                    <input
-                      type="text"
-                      placeholder="e.g. Leading AI research group working on advanced models and solutions."
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      className="flex-1 bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-xl py-2.5 px-4 outline-none placeholder:text-slate-500 text-xs text-slate-200 resize-none leading-relaxed focus:ring-0"
-                    />
-                    <button 
-                      type="submit" 
-                      className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-blue-500/10 shrink-0 self-end border border-blue-500/30"
-                    >
-                      Index
-                    </button>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Resource Description (Optional)</label>
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        placeholder="e.g. Leading AI research group working on advanced models and solutions."
+                        value={newDescription}
+                        onChange={(e) => setNewDescription(e.target.value)}
+                        className="flex-1 bg-white/[0.02] border border-white/10 focus:border-blue-500/40 rounded-xl py-2.5 px-4 outline-none placeholder:text-slate-500 text-xs text-slate-200 resize-none leading-relaxed focus:ring-0"
+                      />
+                      <button 
+                        type="submit" 
+                        className="premium-btn h-9 px-4 text-[10px] font-black uppercase tracking-wider shrink-0 self-end cursor-pointer"
+                      >
+                        Index
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.form>
+                </form>
+              </motion.div>
             )}
           </AnimatePresence>
 
@@ -625,7 +625,7 @@ const Bookmarks = () => {
                  <div className="w-12 h-12 rounded-2xl bg-white/[0.01] flex items-center justify-center text-slate-700 mb-4">
                    <Sparkles size={24} />
                  </div>
-                 <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">No intelligence indexed for this sector.</p>
+                 <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">No bookmarks found in this folder.</p>
               </div>
             )}
           </div>
@@ -696,7 +696,7 @@ const Bookmarks = () => {
                               await handleUpdateField(displayBookmark.id, 'title', editTitleText);
                               setEditingTitle(false);
                             }} 
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all"
+                            className="px-2.5 py-1 text-[9px] font-bold text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer"
                           >
                             Save
                           </button>
@@ -751,7 +751,7 @@ const Bookmarks = () => {
                               await handleUpdateField(displayBookmark.id, 'url', editUrlText);
                               setEditingUrl(false);
                             }} 
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all"
+                            className="px-2.5 py-1 text-[9px] font-bold text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer"
                           >
                             Save
                           </button>
@@ -792,7 +792,7 @@ const Bookmarks = () => {
                             }
                           }}
                           rows={4}
-                          className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-2.5 text-xs font-medium text-white outline-none resize-none focus:border-blue-500/60 transition-colors leading-relaxed"
+                          className="w-full bg-[var(--color-background)]/85 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]/40 focus:border-[var(--color-accent-blue)]/60 rounded-xl px-4 py-2.5 text-xs font-medium text-white outline-none resize-none transition-colors leading-relaxed"
                         />
                         <div className="flex gap-2 justify-end">
                           <button 
@@ -806,7 +806,7 @@ const Bookmarks = () => {
                               await handleUpdateField(displayBookmark.id, 'description', editDescriptionText);
                               setEditingDescription(false);
                             }} 
-                            className="px-2.5 py-1 text-[9px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all"
+                            className="px-2.5 py-1 text-[9px] font-bold text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer"
                           >
                             Save
                           </button>
@@ -938,9 +938,9 @@ const Bookmarks = () => {
               <div className="w-px h-3.5 bg-white/10" />
               <button
                 onClick={handleUndo}
-                className="text-[9.5px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
+                className="text-[9.5px] font-black text-[var(--color-accent-blue-bright)] hover:text-white transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
               >
-                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
+                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-accent-blue)]/30 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
               </button>
               <button
                 onClick={() => setShowUndoToast(false)}

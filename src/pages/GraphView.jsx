@@ -378,23 +378,27 @@ const GraphView = () => {
   // Keyboard shortcut listener to delete selected node
   useEffect(() => {
     const handleKeyDown = async (event) => {
-      if (!selectedNode) return;
+      if (!selectedNode && !selectedLink) return;
 
-      // Do not delete if user is currently typing in an input or textarea
       const activeEl = document.activeElement;
-      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
-        return;
-      }
+      const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
 
-      if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (event.key === 'Escape') {
         event.preventDefault();
-        setNodeToDelete(selectedNode);
+        setSelectedNode(null);
+        setSelectedLink(null);
+        if (activeEl) activeEl.blur();
+      } else if ((event.key === 'Delete' || event.key === 'Backspace') && !isTyping) {
+        if (selectedNode) {
+          event.preventDefault();
+          setNodeToDelete(selectedNode);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNode]);
+  }, [selectedNode, selectedLink]);
 
   // Execute deletion callback
   const executeNodeDelete = useCallback(async (targetNode) => {
@@ -1392,7 +1396,7 @@ const GraphView = () => {
 
       {/* Timeline Evolution Playback Slider - Bottom Center */}
       {minDate && maxDate && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--color-card)]/95 backdrop-blur-xl border border-[var(--color-border)] px-3.5 py-2 rounded-xl flex items-center gap-3 shadow-2xl w-[320px] md:w-[400px]">
+        <div className="absolute bottom-[3.5rem] left-1/2 -translate-x-1/2 z-40 bg-[var(--color-card)]/95 backdrop-blur-xl border border-[var(--color-border)] px-3.5 py-2 rounded-xl flex items-center gap-3 shadow-2xl w-[320px] md:w-[400px]">
           <button
             onClick={() => {
               setIsPlaying(prev => {
@@ -1448,7 +1452,7 @@ const GraphView = () => {
       )}
 
       {/* Action Buttons - Bottom Right */}
-      <div className="absolute bottom-6 right-6 z-40 flex items-center gap-1.5">
+      <div className="absolute bottom-[3.5rem] right-[3.5rem] z-40 flex items-center gap-1.5">
         <button
           onClick={() => {
             setConnectMode(!connectMode);

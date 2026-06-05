@@ -147,11 +147,11 @@ const CustomCombobox = ({ value, options, onChange, placeholder, icon: Icon }) =
                   key={opt.value}
                   onClick={() => { onChange(opt.value); setIsOpen(false); setSearch(''); }}
                   className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-[9.5px] font-bold cursor-pointer transition-colors ${
-                    opt.value === value ? 'bg-blue-600/10 text-blue-400 border border-blue-500/10' : 'text-slate-300 hover:bg-white/[0.03] hover:text-white'
+                    opt.value === value ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/10' : 'text-slate-300 hover:bg-white/[0.03] hover:text-white'
                   }`}
                 >
                   <span className="truncate pr-2">{opt.label}</span>
-                  {opt.value === value && <Check className="w-3 h-3 text-blue-400" />}
+                  {opt.value === value && <Check className="w-3 h-3 text-[var(--color-accent-blue-bright)]" />}
                 </div>
               ))
             ) : (
@@ -1313,9 +1313,14 @@ const Charts = () => {
       }
 
       if (e.key === 'Escape') {
-        if (connectMode) { setConnectMode(false); setConnectSourceId(null); }
-        else if (selectedNodeId) setSelectedNodeId(null);
-        else if (selectedEdge) setSelectedEdge(null);
+        if (connectMode) {
+          setConnectMode(false);
+          setConnectSourceId(null);
+        } else if (selectedNodeId || selectedEdge) {
+          setSelectedNodeId(null);
+          setSelectedEdge(null);
+          setRightOpen(false);
+        }
       }
 
       // Delete Node or Link on Delete/Backspace click
@@ -1636,10 +1641,15 @@ const Charts = () => {
           }
         }
       } else {
-        setSelectedNodeId(parentId);
-        setSelectedEdge(null);
-        setRightOpen(true);
-        setRightView('inspector');
+        if (selectedNodeId === parentId) {
+          setSelectedNodeId(null);
+          setRightOpen(false);
+        } else {
+          setSelectedNodeId(parentId);
+          setSelectedEdge(null);
+          setRightOpen(true);
+          setRightView('inspector');
+        }
       }
       return;
     }
@@ -1665,10 +1675,15 @@ const Charts = () => {
           }
         }
       } else {
-        setSelectedNodeId(nodeId);
-        setSelectedEdge(null);
-        setRightOpen(true);
-        setRightView('inspector');
+        if (selectedNodeId === nodeId) {
+          setSelectedNodeId(null);
+          setRightOpen(false);
+        } else {
+          setSelectedNodeId(nodeId);
+          setSelectedEdge(null);
+          setRightOpen(true);
+          setRightView('inspector');
+        }
       }
       return;
     }
@@ -1680,10 +1695,16 @@ const Charts = () => {
       const parts = attr.split('-');
       const index = parseInt(parts[2]);
       if (links[index]) {
-        setSelectedEdge(links[index]);
-        setSelectedNodeId(null);
-        setRightOpen(true);
-        setRightView('inspector');
+        const edge = links[index];
+        if (selectedEdge && selectedEdge.source === edge.source && selectedEdge.target === edge.target) {
+          setSelectedEdge(null);
+          setRightOpen(false);
+        } else {
+          setSelectedEdge(edge);
+          setSelectedNodeId(null);
+          setRightOpen(true);
+          setRightView('inspector');
+        }
       }
       return;
     }
@@ -1692,6 +1713,7 @@ const Charts = () => {
     if (!e.target.closest('[data-node-id], [data-sub-node-id], [data-link-overlay-id], .pointer-events-auto')) {
       setSelectedNodeId(null);
       setSelectedEdge(null);
+      setRightOpen(false);
       if (connectMode) { 
         setConnectSourceId(null); 
         setConnectMode(false); 
@@ -2266,7 +2288,7 @@ const Charts = () => {
       <AnimatePresence>
         {connectMode && (
           <motion.div initial={{ opacity: 0, y: -25 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -25 }}
-            className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-2xl text-emerald-400 text-[10px] font-bold flex items-center gap-3 shadow-2xl backdrop-blur-md pointer-events-auto">
+            className="absolute top-[4.25rem] left-1/2 -translate-x-1/2 z-40 bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 rounded-2xl text-emerald-400 text-[10px] font-bold flex items-center gap-3 shadow-2xl backdrop-blur-md pointer-events-auto">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
             {connectSourceId
               ? <span>Source: <strong className="text-white font-mono text-[9px]">{connectSourceId}</strong> — Click target stage/sub-step</span>
@@ -2328,63 +2350,65 @@ const Charts = () => {
         <div className="flex gap-1.5">
           <button 
             onClick={() => setLeftOpen(!leftOpen)} 
-            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${leftOpen ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${leftOpen ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20' : 'text-slate-400 hover:text-white'}`}
           >
             Palette
           </button>
           <button 
             onClick={() => setRightOpen(!rightOpen)} 
-            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${rightOpen ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all duration-150 cursor-pointer ${rightOpen ? 'bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/20' : 'text-slate-400 hover:text-white'}`}
           >
             Inspector
           </button>
         </div>
-      </header>
 
-      {/* Floating Canvas Controls (Top-Right, aligned right below title bar) */}
-      <div className="absolute top-3 right-4 z-20 flex items-center gap-2 bg-[var(--color-card)] backdrop-blur-xl px-3 py-1 rounded-full text-slate-300 shadow-xl pointer-events-auto">
-        <button onClick={() => setCanvasZoom(z => Math.max(0.25, z - 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomOut className="w-3.5 h-3.5" /></button>
-        <span onClick={() => { setCanvasZoom(1); setPanOffset({x:0,y:0}); }} className="text-[9px] font-mono font-bold w-10 text-center cursor-pointer hover:text-white">{Math.round(canvasZoom * 100)}%</span>
-        <button onClick={() => setCanvasZoom(z => Math.min(4, z + 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomIn className="w-3.5 h-3.5" /></button>
-        <div className="w-[1px] h-3 bg-white/10" />
-        <button onClick={() => setShowGrid(!showGrid)} className="p-1 hover:text-white cursor-pointer text-[8px] font-black uppercase">
-          Grid {showGrid ? '✓' : '✗'}
-        </button>
-        <div className="w-[1px] h-3 bg-white/10" />
-        <div ref={exportRef} className="relative flex items-center">
-          <button 
-            onClick={() => setExportOpen(!exportOpen)} 
-            className={`p-1 hover:text-white cursor-pointer text-[8px] font-black uppercase flex items-center gap-1 transition-colors ${exportOpen ? 'text-blue-400' : ''}`}
-            title="Export Diagram"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export</span>
+        <div className="w-[1px] h-4 bg-white/10" />
+
+        {/* Floating Canvas Controls (Top-Right, aligned right below title bar) */}
+        <div className="flex items-center gap-2 text-slate-300">
+          <button onClick={() => setCanvasZoom(z => Math.max(0.25, z - 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomOut className="w-3.5 h-3.5" /></button>
+          <span onClick={() => { setCanvasZoom(1); setPanOffset({x:0,y:0}); }} className="text-[9px] font-mono font-bold w-10 text-center cursor-pointer hover:text-white">{Math.round(canvasZoom * 100)}%</span>
+          <button onClick={() => setCanvasZoom(z => Math.min(4, z + 0.1))} className="p-1 hover:text-white cursor-pointer"><ZoomIn className="w-3.5 h-3.5" /></button>
+          <div className="w-[1px] h-3 bg-white/10" />
+          <button onClick={() => setShowGrid(!showGrid)} className="p-1 hover:text-white cursor-pointer text-[8px] font-black uppercase">
+            Grid {showGrid ? '✓' : '✗'}
           </button>
-          
-          {exportOpen && (
-            <div className="absolute right-0 top-7 w-28 bg-[var(--color-card)] border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1 z-50">
-              <button 
-                onClick={() => { handleExport('svg'); setExportOpen(false); }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
-              >
-                SVG Vector
-              </button>
-              <button 
-                onClick={() => { handleExport('png'); setExportOpen(false); }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
-              >
-                PNG Image (2x)
-              </button>
-              <button 
-                onClick={() => { handleExport('jpg'); setExportOpen(false); }}
-                className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
-              >
-                JPG Image (2x)
-              </button>
-            </div>
-          )}
+          <div className="w-[1px] h-3 bg-white/10" />
+          <div ref={exportRef} className="relative flex items-center">
+            <button 
+              onClick={() => setExportOpen(!exportOpen)} 
+              className={`p-1 hover:text-white cursor-pointer text-[8px] font-black uppercase flex items-center gap-1 transition-colors ${exportOpen ? 'text-blue-400' : ''}`}
+              title="Export Diagram"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export</span>
+            </button>
+            
+            {exportOpen && (
+              <div className="absolute right-0 top-7 w-28 bg-[var(--color-card)] border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1 z-50">
+                <button 
+                  onClick={() => { handleExport('svg'); setExportOpen(false); }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
+                >
+                  SVG Vector
+                </button>
+                <button 
+                  onClick={() => { handleExport('png'); setExportOpen(false); }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
+                >
+                  PNG Image (2x)
+                </button>
+                <button 
+                  onClick={() => { handleExport('jpg'); setExportOpen(false); }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-slate-300 hover:bg-white/[0.03] hover:text-white cursor-pointer transition-colors"
+                >
+                  JPG Image (2x)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* LEFT SIDEBAR: Spawner Palette & Library */}
       <AnimatePresence>
@@ -2394,8 +2418,8 @@ const Charts = () => {
             animate={{ opacity: 1, x: 0 }} 
             exit={{ opacity: 0, x: -200 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            style={{ top: '3rem' }}
-            className="absolute left-4 bottom-4 w-72 z-10 bg-[var(--color-background)]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col gap-4 backdrop-blur-xl shadow-2xl pointer-events-auto"
+            style={{ top: '3.5rem' }}
+            className="absolute left-[3.5rem] bottom-[2.75rem] w-72 z-10 bg-gradient-to-br from-[var(--color-card-from)] to-[var(--color-card-to)] border border-[var(--color-border)] rounded-2xl p-4.5 flex flex-col gap-4 backdrop-blur-xl shadow-2xl pointer-events-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
@@ -2457,12 +2481,12 @@ const Charts = () => {
                     onClick={() => { setActiveChartId(chart.id); setChartCode(chart.code); setChartName(chart.name); setSelectedNodeId(null); setSelectedEdge(null); }}
                     className={`group flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer ${
                       chart.id === activeChartId 
-                        ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' 
+                        ? 'bg-[var(--color-accent-blue)]/10 border-[var(--color-accent-blue)]/30 text-[var(--color-accent-blue-bright)]' 
                         : 'bg-white/[0.005] border-white/5 hover:border-white/10 text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <FileText className={`w-3.5 h-3.5 shrink-0 ${chart.id === activeChartId ? 'text-blue-400' : 'text-slate-600'}`} />
+                      <FileText className={`w-3.5 h-3.5 shrink-0 ${chart.id === activeChartId ? 'text-[var(--color-accent-blue-bright)]' : 'text-slate-600'}`} />
                       <span className="text-[9px] font-bold truncate pr-1">{chart.name}</span>
                     </div>
                     {charts.length > 1 && (
@@ -2479,7 +2503,7 @@ const Charts = () => {
               
               <button 
                 onClick={handleCreateDiagram} 
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-[8.5px] font-black uppercase tracking-wider text-white shadow-lg cursor-pointer transition-all flex items-center justify-center gap-1.5 mt-1 active:scale-96"
+                className="premium-btn w-full py-2 text-[8.5px] font-black uppercase tracking-wider cursor-pointer active:scale-96 mt-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create Workflow</span>
@@ -2497,8 +2521,8 @@ const Charts = () => {
             animate={{ opacity: 1, x: 0 }} 
             exit={{ opacity: 0, x: 200 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            style={{ top: '3rem' }}
-            className="absolute right-4 bottom-4 w-88 z-10 bg-[var(--color-background)]/90 border border-white/10 rounded-2xl p-4.5 flex flex-col backdrop-blur-xl shadow-2xl pointer-events-auto"
+            style={{ top: '3.5rem' }}
+            className="absolute right-[3.5rem] bottom-[2.75rem] w-88 z-10 bg-gradient-to-br from-[var(--color-card-from)] to-[var(--color-card-to)] border border-[var(--color-border)] rounded-2xl p-4.5 flex flex-col backdrop-blur-xl shadow-2xl pointer-events-auto"
           >
             {/* Tab select header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2.5 shrink-0">
@@ -2720,7 +2744,7 @@ const Charts = () => {
                             {/* Pill Type Selector */}
                             <div className="flex bg-[var(--color-background)]/90 border border-white/5 p-1 rounded-xl gap-1">
                               {[
-                                { type: 'note', label: 'Note', icon: FileText, color: 'text-blue-400', activeBg: 'bg-blue-600/15 text-blue-400 border border-blue-500/10' },
+                                { type: 'note', label: 'Note', icon: FileText, color: 'text-blue-400', activeBg: 'bg-[var(--color-accent-blue)]/15 text-[var(--color-accent-blue-bright)] border border-[var(--color-accent-blue)]/10' },
                                 { type: 'task', label: 'Task', icon: Check, color: 'text-emerald-400', activeBg: 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/10' },
                                 { type: 'bookmark', label: 'Bookmark', icon: Link2, color: 'text-purple-400', activeBg: 'bg-purple-600/15 text-purple-400 border border-purple-500/10' }
                               ].map(pill => (
@@ -3049,7 +3073,7 @@ const Charts = () => {
                   )}
                   <button 
                     onClick={modal.onConfirm} 
-                    className="w-24 h-8 flex items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-500 text-[8.5px] font-black uppercase text-white shadow-md cursor-pointer transition-colors active:scale-95 select-none"
+                    className="premium-btn w-24 h-8 text-[8.5px] font-black uppercase cursor-pointer select-none active:scale-95"
                   >
                     Confirm
                   </button>

@@ -42,7 +42,9 @@ const Tasks = () => {
   });
   const [newDueDate, setNewDueDate] = useState('');
   const [draggedOverColumn, setDraggedOverColumn] = useState(null);
+  const [isDraggingTask, setIsDraggingTask] = useState(false);
   const [laneInputs, setLaneInputs] = useState({ high: '', medium: '', low: '' });
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // Custom categories list
   const [customCategories, setCustomCategories] = useState(() => {
@@ -306,6 +308,45 @@ const Tasks = () => {
 
   const allCategories = ['All', ...new Set([...customCategories, ...tasks.map(t => t.list || 'Main')])];
 
+  const getColumnClassName = (columnKey, accentColor) => {
+    const isOver = draggedOverColumn === columnKey;
+    const isAnyOver = draggedOverColumn !== null;
+    
+    let baseClass = "border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300";
+    
+    let colorStyles = "";
+    if (accentColor === 'rose') {
+      colorStyles = isOver 
+        ? 'border-rose-500/40 bg-gradient-to-b from-[#1b1420]/75 to-[#0e0a13]/90 shadow-[0_0_25px_rgba(244,63,94,0.08),inset_0_0_15px_rgba(244,63,94,0.02)] scale-[1.01]'
+        : 'bg-white/[0.035] border-white/[0.05] shadow-[inset_0_0_20px_rgba(244,63,94,0.025)]';
+    } else if (accentColor === 'blue') {
+      colorStyles = isOver
+        ? 'border-accent-blue/40 bg-gradient-to-b from-[#101931]/75 to-[#080d1a]/90 shadow-[0_0_25px_rgba(96,165,250,0.08),inset_0_0_15px_rgba(96,165,250,0.02)] scale-[1.01]'
+        : 'bg-white/[0.035] border-white/[0.05] shadow-[inset_0_0_20px_rgba(96,165,250,0.025)]';
+    } else if (accentColor === 'slate') {
+      colorStyles = isOver
+        ? 'border-slate-500/40 bg-gradient-to-b from-[#171a25]/75 to-[#0b0d13]/90 shadow-[0_0_25px_rgba(255,255,255,0.03),inset_0_0_15px_rgba(255,255,255,0.01)] scale-[1.01]'
+        : 'bg-white/[0.035] border-white/[0.05] shadow-[inset_0_0_25px_rgba(255,255,255,0.008)]';
+    } else if (accentColor === 'emerald') {
+      colorStyles = isOver
+        ? 'border-emerald-500/40 bg-gradient-to-b from-[#0f1d17]/75 to-[#070e0b]/90 shadow-[0_0_25px_rgba(16,185,129,0.08),inset_0_0_15px_rgba(16,185,129,0.02)] scale-[1.01]'
+        : 'bg-white/[0.035] border-white/[0.05] shadow-[inset_0_0_20px_rgba(16,185,129,0.025)]';
+    }
+    
+    let stateStyle = "";
+    if (isDraggingTask) {
+      if (isOver) {
+        stateStyle = "border-dashed border-opacity-70";
+      } else if (isAnyOver) {
+        stateStyle = "opacity-45 scale-[0.98] blur-[0.2px]";
+      } else {
+        stateStyle = "border-dashed border-white/10 hover:border-white/20";
+      }
+    }
+    
+    return `${baseClass} ${colorStyles} ${stateStyle}`;
+  };
+
   const handleCreateCategory = (catName) => {
     if (catName && !customCategories.includes(catName)) {
       const updated = [...customCategories, catName];
@@ -442,6 +483,21 @@ const Tasks = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showClearConfirm, handleClearCompleted]);
 
+  // Keyboard handling for add task form
+  useEffect(() => {
+    if (!showAddForm) return;
+
+    const handleFormKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowAddForm(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleFormKeyDown);
+    return () => window.removeEventListener('keydown', handleFormKeyDown);
+  }, [showAddForm]);
+
   useEffect(() => {
     if (editingName && nameInputRef.current) {
       nameInputRef.current.focus();
@@ -543,7 +599,7 @@ const Tasks = () => {
               <div>
                 <span className="text-[10px] font-mono tracking-widest text-slate-555 uppercase block">Tasks Registry</span>
                 <h2 className="text-base font-extrabold text-white tracking-tight mt-0.5 uppercase">
-                  {activeCategory} Sector
+                  {activeCategory} Folder
                 </h2>
               </div>
             </div>
@@ -583,92 +639,134 @@ const Tasks = () => {
                   <span>Kanban Lanes</span>
                 </button>
               </div>
+
             </div>
           </header>
 
           {/* Dedicated Filter/Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
-            <input 
-              type="text" 
-              placeholder="SEARCH OBJECTIVES DECK..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-minimal pl-10 text-xs py-2 h-10 uppercase font-bold tracking-wider"
-            />
-          </div>
-
-          {/* Advanced Inline Task Deployer */}
-          <form onSubmit={handleAddTask} className="bg-slate-950/45 border border-white/[0.03] hover:border-white/[0.06] rounded-xl p-3.5 shadow-2xl transition-all space-y-3">
-            <div className="flex items-center gap-3">
-              <Plus size={15} className="text-blue-500 shrink-0" />
-              <input
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                placeholder="DEPLOY NEW DIRECTIVE TARGET (PRESS ENTER)..."
-                className="flex-1 bg-transparent border-none outline-none text-xs text-slate-100 placeholder:text-slate-550 font-bold uppercase tracking-wider focus:ring-0 focus:outline-none"
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
+              <input 
+                type="text" 
+                placeholder="SEARCH OBJECTIVES DECK..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input-premium w-full pl-10 h-10"
               />
             </div>
+            <button 
+              type="button"
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="premium-btn flex items-center justify-center gap-2 h-10 text-[9.5px] px-5 font-black uppercase tracking-widest cursor-pointer active:scale-95 shrink-0"
+            >
+              <Plus size={12} className={`transition-transform duration-300 ${showAddForm ? 'rotate-45' : ''}`} />
+              <span>{showAddForm ? 'Close' : 'Add Task'}</span>
+            </button>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-2.5 border-t border-white/[0.02] text-[9px] font-mono tracking-widest uppercase text-slate-500">
-              <div className="flex items-center gap-2">
-                <span>Priority:</span>
-                <div className="flex items-center gap-2 font-bold">
-                  {['low', 'medium', 'high'].map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setNewPriority(p)}
-                      className={`transition-colors focus:outline-none cursor-pointer uppercase ${
-                        newPriority === p 
-                          ? p === 'high' 
-                            ? 'text-rose-400 font-black' 
-                            : p === 'medium' 
-                              ? 'text-blue-400 font-black' 
-                              : 'text-slate-300 font-black'
-                          : 'text-slate-600 hover:text-slate-400'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span>Sector:</span>
-                <div className="w-32 text-slate-300">
-                  <CategoryCombobox
-                    value={newCategory}
-                    onChange={(val) => setNewCategory(val)}
-                    suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
-                    placeholder="Assign folder..."
-                    accentColor="blue"
-                    variant="minimal"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span>Deadline:</span>
-                <input
-                  type="date"
-                  value={newDueDate}
-                  onChange={(e) => setNewDueDate(e.target.value)}
-                  className="bg-transparent border-none p-0 outline-none text-[9.5px] font-mono text-slate-355 tracking-wider cursor-pointer w-22 focus:ring-0 focus:outline-none"
-                  style={{ colorScheme: 'dark' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="ml-auto px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase tracking-widest transition-all rounded-lg active:scale-95 shadow-md shadow-blue-500/10 border border-blue-500/30"
+          {/* Advanced Inline Task Creator */}
+          <AnimatePresence>
+            {showAddForm && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+                className="overflow-hidden"
               >
-                Deploy
-              </button>
-            </div>
-          </form>
+                <form 
+                  onSubmit={handleAddTask} 
+                  className="bg-gradient-to-br from-[var(--color-card-from)] to-[var(--color-card-to)] border border-[var(--color-border)] rounded-2xl p-6 shadow-2xl space-y-4 relative backdrop-blur-lg group mb-6"
+                >
+                  {/* Cybersecurity style status label */}
+                  <div className="flex items-center justify-between pb-1 text-[8.5px] font-mono tracking-widest text-slate-500 font-bold uppercase select-none">
+                    <span>[DIRECTIVE ENTRY PANEL]</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-[var(--color-background)]/60 border border-[var(--color-border)] rounded-xl px-4 py-3 focus-within:border-accent-blue/30 focus-within:bg-[var(--color-background)]/85 focus-within:shadow-[0_0_15px_rgba(59,130,246,0.03)] transition-all">
+                    <Plus size={16} className="text-accent-blue-bright shrink-0" />
+                    <input
+                      type="text"
+                      value={newTask}
+                      onChange={(e) => setNewTask(e.target.value)}
+                      placeholder="ADD NEW TASK TARGET (PRESS ENTER)..."
+                      className="flex-1 bg-transparent border-none outline-none text-xs text-slate-100 placeholder:text-slate-600 font-bold uppercase tracking-wider focus:ring-0 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-1.5 text-[9px] font-mono tracking-widest uppercase text-slate-500">
+                    {/* Priority Option Selector with Borders */}
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--color-background)]/60 border border-[var(--color-border)] rounded-xl">
+                      <span className="text-slate-500 flex items-center gap-1.5 text-[8.5px] font-bold">
+                        <Flag size={10} className="text-slate-500" /> PRIORITY:
+                      </span>
+                      <div className="flex items-center gap-1 font-bold">
+                        {['low', 'medium', 'high'].map(p => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setNewPriority(p)}
+                            className={`px-2.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer focus:outline-none ${
+                              newPriority === p 
+                                ? p === 'high' 
+                                  ? 'bg-rose-500/15 text-rose-450 border border-rose-500/30 shadow-sm' 
+                                  : p === 'medium' 
+                                    ? 'bg-blue-500/15 text-blue-455 border border-blue-500/30 shadow-sm' 
+                                    : 'bg-white/10 text-white border border-white/20 shadow-sm'
+                                : 'text-slate-600 border border-transparent hover:text-slate-400 hover:bg-white/[0.02]'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sector Option Selector with Borders */}
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--color-background)]/60 border border-[var(--color-border)] rounded-xl">
+                      <span className="text-slate-555 flex items-center gap-1.5 text-[8.5px] font-bold">
+                        <Tag size={10} className="text-slate-555" /> FOLDER:
+                      </span>
+                      <div className="w-32 text-slate-300">
+                        <CategoryCombobox
+                          value={newCategory}
+                          onChange={(val) => setNewCategory(val)}
+                          suggestions={allCategories.filter(c => !['All', 'Today', 'Priority', 'Stale', 'General', 'Main'].includes(c))}
+                          placeholder="Assign folder..."
+                          accentColor="blue"
+                          variant="minimal"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Deadline Option Selector with Borders */}
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 bg-[var(--color-background)]/60 border border-[var(--color-border)] rounded-xl">
+                      <span className="text-slate-500 flex items-center gap-1.5 text-[8.5px] font-bold">
+                        <Calendar size={10} className="text-slate-555" /> DEADLINE:
+                      </span>
+                      <input
+                        type="date"
+                        value={newDueDate}
+                        onChange={(e) => setNewDueDate(e.target.value)}
+                        className="bg-transparent border-none p-0 outline-none text-[9px] font-mono text-slate-355 tracking-wider cursor-pointer w-22 focus:ring-0 focus:outline-none"
+                        style={{ colorScheme: 'dark' }}
+                      />
+                    </div>
+
+                    {/* Add Trigger Button */}
+                    <button
+                      type="submit"
+                      className="premium-btn ml-auto text-[9.5px] font-mono font-black uppercase tracking-widest px-4 py-2"
+                    >
+                      <Plus size={11} />
+                      Add
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Viewport content */}
           <AnimatePresence mode="wait">
@@ -751,6 +849,11 @@ const Tasks = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                onDragStart={() => setIsDraggingTask(true)}
+                onDragEnd={() => {
+                  setIsDraggingTask(false);
+                  setDraggedOverColumn(null);
+                }}
                 className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start w-full select-none"
               >
                 {/* 1. High priority Column */}
@@ -763,14 +866,10 @@ const Tasks = () => {
                     handleCardDrop(id, 'high');
                     setDraggedOverColumn(null);
                   }}
-                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
-                    draggedOverColumn === 'high' 
-                      ? 'kanban-drop-active border-rose-500/35 bg-rose-500/[0.02]' 
-                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
-                  }`}
+                  className={getColumnClassName('high', 'rose')}
                 >
                   <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
-                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-400 uppercase">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.7)] animate-pulse" />
                       <span>High Focus</span>
                     </div>
@@ -793,7 +892,7 @@ const Tasks = () => {
                           }
                         }}
                         placeholder="+ DEPLOY HIGH TARGET..."
-                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-655 uppercase tracking-wider focus:ring-0 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -813,7 +912,7 @@ const Tasks = () => {
                     ))}
                     {activeTasks.filter(t => t.priority === 'high').length === 0 && (
                       <div className="flex-1 border border-dashed border-white/[0.02] rounded-xl flex flex-col items-center justify-center py-16 px-4">
-                        <p className="text-[9px] font-mono text-slate-650 uppercase tracking-widest">Zone Clear</p>
+                        <p className="text-[9px] font-mono text-slate-655 uppercase tracking-widest">Zone Clear</p>
                       </div>
                     )}
                   </div>
@@ -829,14 +928,10 @@ const Tasks = () => {
                     handleCardDrop(id, 'medium');
                     setDraggedOverColumn(null);
                   }}
-                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
-                    draggedOverColumn === 'medium' 
-                      ? 'kanban-drop-active border-accent-blue/35 bg-accent-blue/[0.02]' 
-                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
-                  }`}
+                  className={getColumnClassName('medium', 'blue')}
                 >
                   <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
-                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-400 uppercase">
                       <span className="w-1.5 h-1.5 rounded-full bg-accent-blue shadow-[0_0_6px_rgba(96,165,250,0.7)] animate-pulse" />
                       <span>Medium Focus</span>
                     </div>
@@ -859,7 +954,7 @@ const Tasks = () => {
                           }
                         }}
                         placeholder="+ DEPLOY MEDIUM TARGET..."
-                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-655 uppercase tracking-wider focus:ring-0 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -895,15 +990,11 @@ const Tasks = () => {
                     handleCardDrop(id, 'low');
                     setDraggedOverColumn(null);
                   }}
-                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
-                    draggedOverColumn === 'low' 
-                      ? 'kanban-drop-active border-slate-500/35 bg-white/[0.01]' 
-                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
-                  }`}
+                  className={getColumnClassName('low', 'slate')}
                 >
                   <div className="flex items-center justify-between pb-2 mb-3 px-0.5">
-                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-350 uppercase">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
                       <span>Low Focus</span>
                     </div>
                     <span className="px-2.5 py-0.5 text-[9px] font-mono font-black text-slate-400 bg-white/[0.03] rounded-full border border-white/10">
@@ -925,7 +1016,7 @@ const Tasks = () => {
                           }
                         }}
                         placeholder="+ DEPLOY LOW TARGET..."
-                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-600 uppercase tracking-wider focus:ring-0 focus:outline-none"
+                        className="w-full bg-transparent border-none outline-none text-[10px] font-bold text-slate-200 placeholder:text-slate-655 uppercase tracking-wider focus:ring-0 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -961,14 +1052,10 @@ const Tasks = () => {
                     handleCardDrop(id, 'completed');
                     setDraggedOverColumn(null);
                   }}
-                  className={`border backdrop-blur-md rounded-2xl p-5 h-[calc(100vh-230px)] min-h-[500px] flex flex-col relative shadow-2xl overflow-hidden transition-all duration-300 ${
-                    draggedOverColumn === 'completed' 
-                      ? 'kanban-drop-active border-emerald-500/35 bg-emerald-500/[0.02]' 
-                      : 'bg-[#0b0c14]/30 border-white/[0.03]'
-                  }`}
+                  className={getColumnClassName('completed', 'emerald')}
                 >
                   <div className="flex items-center justify-between pb-2 mb-4 px-0.5">
-                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-355 uppercase">
+                    <div className="flex items-center gap-2 text-[9.5px] font-mono font-bold tracking-widest text-slate-400 uppercase">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)] animate-pulse" />
                       <span>Completed</span>
                     </div>
@@ -976,7 +1063,7 @@ const Tasks = () => {
                       {completedTasks.length > 0 && (
                         <button
                           onClick={() => setShowClearConfirm(true)}
-                          className="text-[8px] font-bold text-rose-500 hover:text-rose-450 transition-colors focus:outline-none cursor-pointer"
+                          className="text-[8.5px] font-mono font-black text-rose-500 hover:text-rose-450 transition-colors focus:outline-none cursor-pointer uppercase tracking-widest"
                         >
                           Clear
                         </button>
@@ -1077,11 +1164,11 @@ const Tasks = () => {
                               if (e.key === 'Escape') { setEditingName(false); setEditName(focusedTask.text); }
                             }}
                             rows={2}
-                            className="w-full bg-[#080a10] border border-blue-500/30 rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none resize-none focus:border-blue-500/50 uppercase tracking-wider transition-colors focus:ring-0"
+                            className="w-full bg-[var(--color-background)]/85 border border-[var(--color-border)] rounded-xl px-4 py-3 text-xs font-semibold text-white outline-none resize-none focus:border-[var(--color-accent-blue)]/50 uppercase tracking-wider transition-colors focus:ring-0"
                           />
                           <div className="flex gap-2 justify-end">
                             <button onClick={() => { setEditingName(false); setEditName(focusedTask.text); }} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-white rounded-lg hover:bg-white/[0.03] transition-all cursor-pointer">Cancel</button>
-                            <button onClick={handleSaveName} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all cursor-pointer">Save</button>
+                            <button onClick={handleSaveName} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer">Save</button>
                           </div>
                         </div>
                       ) : (
@@ -1103,7 +1190,7 @@ const Tasks = () => {
                     <div className="space-y-3">
                       <div className="text-[8.5px] font-mono tracking-widest text-slate-500 uppercase select-none px-1">Parameters</div>
                       
-                      <div className="bg-[#161a35] border border-white/[0.08] rounded-xl p-2.5 divide-y divide-white/[0.03] space-y-3.5 select-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                      <div className="bg-white/[0.012] border border-white/[0.04] rounded-xl p-2.5 divide-y divide-white/[0.03] space-y-3.5 select-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
                         
                         {/* Focus Priority selector */}
                         <div className="flex items-center justify-between pt-1 pb-1 px-1.5 gap-4">
@@ -1121,7 +1208,7 @@ const Tasks = () => {
                                     ? p === 'high' 
                                       ? 'bg-rose-500 text-white shadow-sm' 
                                       : p === 'medium' 
-                                        ? 'bg-blue-600 text-white shadow-sm' 
+                                        ? 'bg-[var(--color-accent-blue)] text-white shadow-sm' 
                                         : 'bg-slate-600 text-white'
                                     : 'text-slate-550 hover:text-slate-350 hover:bg-white/[0.02]'
                                 }`}
@@ -1136,7 +1223,7 @@ const Tasks = () => {
                         <div className="flex items-center justify-between pt-3.5 pb-1 px-1.5 gap-4">
                           <div className="flex items-center gap-2 text-[10px] font-mono tracking-wider font-bold text-slate-500">
                             <Tag size={12} />
-                            <span>Sector Assignment</span>
+                            <span>Folder Assignment</span>
                           </div>
                           <div className="w-48 shrink-0">
                             <CategoryCombobox
@@ -1242,11 +1329,11 @@ const Tasks = () => {
                             }}
                             rows={6}
                             placeholder="WRITE LOG DATA AND CONTEXT INSTRUCTIONS..."
-                            className="w-full bg-[#080a10] border border-white/10 focus:border-blue-500/30 rounded-xl px-4 py-3.5 text-xs text-slate-300 placeholder:text-slate-655 outline-none resize-none font-bold uppercase tracking-wider leading-relaxed transition-colors focus:ring-0"
+                            className="w-full bg-[var(--color-background)]/80 border border-[var(--color-border)] focus:border-[var(--color-accent-blue)]/50 rounded-xl px-4 py-3.5 text-xs text-slate-300 placeholder:text-slate-600 outline-none resize-none font-bold uppercase tracking-wider leading-relaxed transition-colors focus:ring-0"
                           />
                           <div className="flex gap-2 justify-end select-none">
                             <button onClick={() => { setEditingNotes(false); setEditNotes(focusedTask.notes || ''); }} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-slate-500 hover:text-white rounded-lg hover:bg-white/[0.03] transition-all cursor-pointer">Cancel</button>
-                            <button onClick={handleSaveNotes} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all cursor-pointer">Save</button>
+                            <button onClick={handleSaveNotes} className="px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer">Save</button>
                           </div>
                         </div>
                       ) : (focusedTask.notes || '').length > 0 ? (

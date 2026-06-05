@@ -375,7 +375,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
       return (
         <>
           {parts[0]}
-          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
+          <kbd className="px-1.5 py-0.5 mx-1 rounded border border-[var(--color-accent-blue)]/30 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] font-extrabold uppercase font-mono tracking-normal text-[9px] select-none">Ctrl+Z</kbd>
           {parts[1]}
         </>
       );
@@ -425,14 +425,14 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
                   }}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all duration-300 active:scale-95 cursor-pointer select-none mr-2 ${
                     isSidebarCollapsed 
-                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
+                      ? 'bg-[var(--color-accent-blue)]/10 border-[var(--color-accent-blue)]/30 text-[var(--color-accent-blue-bright)] hover:bg-[var(--color-accent-blue)]/20 hover:border-[var(--color-accent-blue)]/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
                       : 'bg-white/[0.02] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20 hover:text-white'
                   }`}
                   title={isSidebarCollapsed ? "Expand Folders" : "Collapse Folders"}
                 >
                   {isSidebarCollapsed ? (
                     <>
-                      <Folder className="w-3.5 h-3.5 text-blue-400" />
+                      <Folder className="w-3.5 h-3.5 text-[var(--color-accent-blue-bright)]" />
                       <span>Folders</span>
                     </>
                   ) : (
@@ -469,19 +469,19 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
 
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
               <input 
                 type="text" 
                 placeholder={categoryKey === 'notes' ? `Search across ${filteredItems.length} Notes...` : `Search across ${filteredItems.length} ideas...`} 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input-minimal pl-10 text-xs py-2 h-10"
+                className="search-input-premium w-full pl-10 h-10"
               />
             </div>
           </div>
 
-          <form onSubmit={handleAddItem} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-blue-500/40 rounded-xl shadow-2xl transition-all w-full h-12">
-            <Plus size={16} className="text-blue-500 shrink-0" />
+          <form onSubmit={handleAddItem} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-[var(--color-accent-blue)]/40 rounded-xl shadow-2xl transition-all w-full h-12">
+            <Plus size={16} className="text-[var(--color-accent-blue-bright)] shrink-0" />
             <input
               type="text"
               value={newContent}
@@ -501,7 +501,12 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
                   variant="minimal"
                 />
               </div>
-              <button type="submit" className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider transition-all shadow-md shadow-blue-500/10">Add</button>
+              <button 
+                type="submit" 
+                className="premium-btn px-3.5 py-1.5 h-8 text-[10px] uppercase tracking-wider cursor-pointer font-bold"
+              >
+                Add
+              </button>
             </div>
           </form>
 
@@ -525,7 +530,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
               <div className="w-12 h-12 rounded-2xl bg-white/[0.01] flex items-center justify-center text-slate-700 mx-auto mb-4">
                  <Sparkles size={24} />
               </div>
-              <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">No nodes found in this sector.</p>
+              <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">No nodes found in this folder.</p>
             </div>
           )}
         </div>
@@ -580,12 +585,12 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
                             }
                           }}
                           rows={12}
-                          className="w-full bg-white/[0.04] border border-blue-500/30 rounded-xl px-4 py-3 text-sm font-medium text-white outline-none resize-none focus:border-blue-500/60 transition-colors leading-relaxed"
+                          className="w-full bg-[var(--color-background)]/85 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]/40 focus:border-[var(--color-accent-blue)]/60 rounded-xl px-4 py-3 text-sm font-medium text-white outline-none resize-none transition-colors leading-relaxed"
                         />
                         <div className="flex gap-2 justify-end">
                           <button 
                             onClick={() => { setEditingContent(false); setEditContentText(displayItem.content || ''); }} 
-                            className="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-all"
+                            className="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-all cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -594,7 +599,7 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
                               await handleUpdateField(displayItem.id, 'content', editContentText);
                               setEditingContent(false);
                             }} 
-                            className="px-3 py-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg border border-blue-500/20 transition-all"
+                            className="px-3 py-1.5 text-[10px] font-bold text-[var(--color-accent-blue-bright)] bg-[var(--color-accent-blue)]/10 hover:bg-[var(--color-accent-blue)]/20 rounded-lg border border-[var(--color-accent-blue)]/20 transition-all cursor-pointer"
                           >
                             Save
                           </button>
@@ -698,9 +703,9 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
               <div className="w-px h-3.5 bg-white/10" />
               <button
                 onClick={handleUndo}
-                className="text-[9.5px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
+                className="text-[9.5px] font-black text-[var(--color-accent-blue-bright)] hover:text-white transition-colors uppercase tracking-widest cursor-pointer focus:outline-none flex items-center gap-1.5"
               >
-                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400 font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
+                Undo <span className="text-white/20 font-normal">|</span> <kbd className="px-1.5 py-0.5 rounded border border-[var(--color-accent-blue)]/30 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue-bright)] font-extrabold uppercase font-mono tracking-normal text-[8px] select-none">Ctrl+Z</kbd>
               </button>
               <button
                 onClick={() => setShowUndoToast(false)}
