@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Plus, LayoutGrid, List, Sparkles, Tag, X, Clock, Trash2, Edit3, FileText, Folder, FolderOpen } from 'lucide-react';
+import { Plus, LayoutGrid, List, Sparkles, Tag, X, Clock, Trash2, Edit3, FileText, Folder, FolderOpen } from 'lucide-react';
 import NoteCard from '../components/Shared/NoteCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import CategorySidebar from '../components/Shared/CategorySidebar';
 import { evaluateSmartFilter } from '../utils/categoryHelpers';
 import CategoryCombobox from '../components/Shared/CategoryCombobox';
+import ClearableSearchInput from '../components/Shared/ClearableSearchInput';
 
 const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem, categoryKey, accentColor = 'blue', label = 'Module' }) => {
   const [items, setItems] = useState([]);
@@ -468,16 +469,14 @@ const GridPage = ({ title, subtitle, fetchData, deleteItem, addItem, updateItem,
           </header>
 
           <div className="flex flex-col md:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
-              <input 
-                type="text" 
-                placeholder={categoryKey === 'notes' ? `Search across ${filteredItems.length} Notes...` : `Search across ${filteredItems.length} ideas...`} 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input-premium w-full pl-10 h-10"
-              />
-            </div>
+            <ClearableSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder={categoryKey === 'notes' ? `Search across ${filteredItems.length} Notes...` : `Search across ${filteredItems.length} ideas...`}
+              wrapperClassName="flex-1"
+              iconClassName="text-slate-550"
+              inputClassName="search-input-premium w-full pl-10 h-10"
+            />
           </div>
 
           <form onSubmit={handleAddItem} className="flex items-center gap-3 pl-4 pr-2 py-1.5 bg-slate-900/30 border border-white/10 hover:border-white/20 focus-within:border-[var(--color-accent-blue)]/40 rounded-xl shadow-2xl transition-all w-full h-12">

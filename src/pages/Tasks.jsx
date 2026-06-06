@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { getTasks, addTask, updateTask, deleteTask } from '../api';
 import TaskItem from '../components/Tasks/TaskItem';
 import CategoryCombobox from '../components/Shared/CategoryCombobox';
+import ClearableSearchInput from '../components/Shared/ClearableSearchInput';
 import { 
   Plus, 
-  Search, 
   CheckCircle2, 
   Tag,
   Calendar,
@@ -645,16 +645,14 @@ const Tasks = () => {
 
           {/* Dedicated Filter/Search Input */}
           <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-550" size={13} />
-              <input 
-                type="text" 
-                placeholder="SEARCH OBJECTIVES DECK..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input-premium w-full pl-10 h-10"
-              />
-            </div>
+            <ClearableSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="SEARCH OBJECTIVES DECK..."
+              wrapperClassName="flex-1"
+              iconClassName="text-slate-550"
+              inputClassName="search-input-premium w-full pl-10 h-10"
+            />
             <button 
               type="button"
               onClick={() => setShowAddForm(!showAddForm)}

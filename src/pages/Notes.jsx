@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, 
   Plus, 
   Sparkles, 
   Trash2, 
@@ -13,12 +12,12 @@ import {
   FolderOpen,
   X, 
   FileText, 
-  BookOpen, 
   ChevronLeft
 } from 'lucide-react';
 import { getNotes, addNote, updateNote, deleteNote, getCategories } from '../api';
 import CategorySidebar from '../components/Shared/CategorySidebar';
 import CategoryCombobox from '../components/Shared/CategoryCombobox';
+import ClearableSearchInput from '../components/Shared/ClearableSearchInput';
 import { evaluateSmartFilter, getCategoryColor } from '../utils/categoryHelpers';
 
 const Notes = () => {
@@ -588,16 +587,13 @@ const Notes = () => {
               </header>
 
               {/* Deck Search Input */}
-              <div className="relative shrink-0">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
-                <input 
-                  type="text" 
-                  placeholder={`Search across ${filteredNotes.length} notes...`} 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="search-input-premium w-full pl-10 h-10"
-                />
-              </div>
+              <ClearableSearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={`Search across ${filteredNotes.length} notes...`}
+                wrapperClassName="shrink-0"
+                inputClassName="search-input-premium w-full pl-10 h-10"
+              />
 
               {/* Scrollable list of rows */}
               <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-6">

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { X, FileText, Lightbulb, CheckSquare, Bookmark, AlertTriangle, Plus, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, FileText, Lightbulb, CheckSquare, Bookmark, AlertTriangle, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { addNode, getTasks, getIdeas, getBookmarks, getNotes, getCategories } from '../../api';
 import CategoryCombobox from '../Shared/CategoryCombobox';
+import ClearableSearchInput from '../Shared/ClearableSearchInput';
 
 const CreateNodeModal = ({ onClose, onSuccess, initialCoordinates }) => {
   const [nodeType, setNodeType] = useState('custom'); // 'custom', 'note', 'task', 'idea', 'bookmark'
@@ -216,16 +217,13 @@ const CreateNodeModal = ({ onClose, onSuccess, initialCoordinates }) => {
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                   Search & Select {nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}
                 </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder={`Type to search existing ${nodeType}s...`}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                <ClearableSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder={`Type to search existing ${nodeType}s...`}
+                  iconClassName="left-3 w-4 h-4"
+                  inputClassName="w-full bg-white/[0.02] border border-white/10 rounded-xl pl-9 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                />
               </div>
 
               {/* Scrollable Entity List */}

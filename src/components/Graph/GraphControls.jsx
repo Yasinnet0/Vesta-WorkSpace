@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
-  Search, Sliders, Eye, RefreshCw, Maximize2, Sparkles, SlidersHorizontal
+  Eye, RefreshCw, Maximize2, Sparkles, SlidersHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ClearableSearchInput from '../Shared/ClearableSearchInput';
 
 const GraphControls = ({
   searchQuery,
@@ -39,16 +40,12 @@ const GraphControls = ({
       {/* Search and Command Bar */}
       <div className="flex items-center gap-2.5 p-2 bg-[var(--color-card)]/90 backdrop-blur-md border border-[var(--color-border)] rounded-2xl shadow-2xl">
         {/* Search Input */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
-          <input 
-            type="text" 
-            placeholder="Search graph nodes..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input-premium w-44 focus:w-60 transition-all pl-10 py-2"
-          />
-        </div>
+        <ClearableSearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search graph nodes..."
+          inputClassName="search-input-premium w-44 focus:w-60 transition-all pl-10 py-2"
+        />
 
         {/* Quick controls buttons */}
         <div className="flex items-center border-l border-white/5 pl-2 gap-0.5">
