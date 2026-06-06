@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Check, Tag, Plus } from 'lucide-react';
+import { ChevronDown, Check, Tag, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CategoryCombobox = ({
@@ -126,7 +126,7 @@ const CategoryCombobox = ({
           className={
             isMinimal
               ? 'bg-transparent border-none outline-none text-[10px] text-slate-300 placeholder:text-slate-500 w-16 font-bold focus:ring-0 focus:outline-none py-0.5'
-              : `w-full bg-white/[0.02] hover:bg-white/[0.03] border border-white/10 rounded-xl pl-4 pr-12 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none ${accentStyles.borderFocus} transition-all font-semibold`
+              : `w-full bg-white/[0.02] hover:bg-white/[0.03] border border-white/10 rounded-xl pl-4 ${searchQuery ? 'pr-20' : 'pr-12'} py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none ${accentStyles.borderFocus} transition-all font-semibold`
           }
         />
         
@@ -141,6 +141,19 @@ const CategoryCombobox = ({
           </button>
         ) : (
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  onChange('');
+                }}
+                aria-label="Clear search"
+                className="text-slate-500 hover:text-white hover:bg-white/5 p-1.5 rounded-lg transition-all active:scale-95 shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
             <div className="w-px h-4 bg-white/10 shrink-0" />
             <button
               type="button"

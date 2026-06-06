@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
-  X, Trash2, Link2, Tag, Calendar, Check, ExternalLink, AlertCircle, Save, Plus, Search, Sparkles, AlertTriangle
+  X, Trash2, Link2, Tag, Calendar, Check, ExternalLink, AlertCircle, Save, Plus, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,6 +13,7 @@ import {
   getCategories
 } from '../../api';
 import CategoryCombobox from '../Shared/CategoryCombobox';
+import ClearableSearchInput from '../Shared/ClearableSearchInput';
 
 const COLORS = {
   custom: { text: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/10' },
@@ -543,16 +544,14 @@ const NodeEditor = ({ node, nodes, links, onClose, onDataChanged, onDeleteReques
               {/* Target search dropdown */}
               {isDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-64 bg-[var(--color-card)] border border-[var(--color-border)] rounded-xl shadow-2xl p-2.5 z-[60] space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="Find target node..."
-                      value={searchTargetQuery}
-                      onChange={(e) => setSearchTargetQuery(e.target.value)}
-                      className="w-full bg-white/[0.02] border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xxs text-white focus:outline-none"
-                    />
-                  </div>
+                  <ClearableSearchInput
+                    value={searchTargetQuery}
+                    onChange={setSearchTargetQuery}
+                    placeholder="Find target node..."
+                    iconClassName="left-2.5 w-3.5 h-3.5"
+                    clearButtonClassName="right-1.5 p-0.5"
+                    inputClassName="w-full bg-white/[0.02] border border-white/10 rounded-lg pl-8 py-1.5 text-xxs text-white focus:outline-none"
+                  />
                   <div className="max-h-36 overflow-y-auto divide-y divide-white/5 no-scrollbar">
                     {connectableNodes.length === 0 ? (
                       <div className="p-2.5 text-center text-slate-600 text-[10px]">No linkable nodes</div>

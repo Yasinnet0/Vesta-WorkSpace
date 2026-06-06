@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTasks, getNotes, getBookmarks } from '../api';
+import ClearableSearchInput from '../components/Shared/ClearableSearchInput';
 
 /* ─── Helper: Normalize strings for key-matching ─── */
 const normalizeForMatch = (str) => {
@@ -120,17 +121,15 @@ const CustomCombobox = ({ value, options, onChange, placeholder, icon: Icon }) =
 
       {isOpen && (
         <div className="absolute left-0 right-0 mt-1.5 z-50 bg-[var(--color-card)]/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-2xl p-1.5 flex flex-col gap-1.5 max-h-48 overflow-visible border-t-[1.5px] border-t-white/20">
-          <div className="relative">
-            <Search className="absolute left-2 top-1.5 w-3 h-3 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search items..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[var(--color-background)]/65 border border-white/5 rounded-lg pl-7 pr-2 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/30"
-              autoFocus
-            />
-          </div>
+          <ClearableSearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search items..."
+            inputClassName="w-full bg-[var(--color-background)]/65 border border-white/5 rounded-lg pl-7 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/30"
+            iconClassName="left-2 w-3 h-3"
+            clearButtonClassName="right-1.5 p-0.5"
+            autoFocus
+          />
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-0.5 max-h-36">
             <div
               onClick={() => { onChange(''); setIsOpen(false); setSearch(''); }}

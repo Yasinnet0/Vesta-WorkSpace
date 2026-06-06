@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Folder, 
   FolderOpen, 
   FolderPlus, 
   Plus, 
-  Search, 
   ChevronDown, 
   ChevronRight, 
   Sliders, 
@@ -18,6 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { getCategoryColor, evaluateSmartFilter } from '../../utils/categoryHelpers';
+import ClearableSearchInput from './ClearableSearchInput';
 
 const CategorySidebar = ({ 
   categories = [], 
@@ -337,16 +337,14 @@ const CategorySidebar = ({
           </form>
         )}
 
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600" size={11} />
-          <input 
-            type="text" 
-            placeholder="SEARCH..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[var(--color-background)] border border-[var(--color-border)] focus:border-[var(--color-accent-blue-bright)]/50 rounded-lg pl-8 pr-3 py-1.5 outline-none text-[9px] font-black uppercase tracking-widest text-slate-300 placeholder:text-slate-600 transition-colors"
-          />
-        </div>
+        <ClearableSearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="SEARCH..."
+          iconClassName="left-2.5 text-slate-600"
+          clearButtonClassName="right-1.5 p-0.5"
+          inputClassName="w-full bg-[var(--color-background)] border border-[var(--color-border)] focus:border-[var(--color-accent-blue-bright)]/50 rounded-lg pl-8 py-1.5 outline-none text-[9px] font-black uppercase tracking-widest text-slate-300 placeholder:text-slate-600 transition-colors"
+        />
       </div>
 
       {/* Smart Filters Hub */}
